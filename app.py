@@ -821,6 +821,8 @@ def export_pdf():
     elements.append(t)
     elements.append(Spacer(1, 6))
 
+    header_bg = colors.HexColor("#f1f5f9")
+
     # ── Income Entries ──────────────────────
     if pdf_incomes:
         elements.append(Paragraph("Money Inflows", section_style))
@@ -864,9 +866,7 @@ def export_pdf():
             bs["status"].replace("_", " "),
         ])
     t = Table(budget_table_data, colWidths=[35 * mm, 30 * mm, 30 * mm, 25 * mm, 40 * mm])
-    header_bg = colors.HexColor("#f1f5f9")
     over_color = colors.HexColor("#ef4444")
-    ok_color = colors.HexColor("#334155")
     t.setStyle(TableStyle([
         ("FONTSIZE", (0, 0), (-1, -1), 9),
         ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
