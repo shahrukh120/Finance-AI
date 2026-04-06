@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}Add Expense - Finance Manager{% endblock %}
+
+{% block content %}
+<div class="form-card">
+    <div class="text-center mb-4">
+        <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3"
+             style="width:64px; height:64px; background: var(--gradient);">
+            <i class="fas fa-plus text-white fs-4"></i>
+        </div>
+        <h4 class="fw-bold">Add New Expense</h4>
+        <p class="text-muted">Record a new transaction to track your spending</p>
+    </div>
+
+    <div class="card p-4">
+        <form method="POST" action="{{ url_for('add_expense') }}">
+            <div class="mb-3">
+                <label for="date" class="form-label fw-semibold">
+                    <i class="fas fa-calendar-day me-1 text-muted"></i> Date
+                </label>
+                <input type="date" class="form-control" id="date" name="date"
+                       value="2026-03-28" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="category" class="form-label fw-semibold">
+                    <i class="fas fa-tag me-1 text-muted"></i> Category
+                </label>
+                <select class="form-select" id="category" name="category" required>
+                    <option value="" disabled selected>Select a category...</option>
+                    <option value="food">Food - Groceries, restaurants, cafes</option>
+                    <option value="transport">Transport - Transit, ride-sharing, fuel</option>
+                    <option value="entertainment">Entertainment - Movies, games, subscriptions</option>
+                    <option value="bills">Bills - Utilities, rent, phone, internet</option>
+                    <option value="healthcare">Healthcare - Doctor, medicines, dental</option>
+                </select>
+            </div>
+
+            <!-- Currency + Amount Row -->
+            <div class="mb-3">
+                <label class="form-label fw-semibold">
+                    <i class="fas fa-coins me-1 text-muted"></i> Amount
+                </label>
+                <div class="row g-2">
+                    <div class="col-5">
+                        <select class="form-select" id="currency" name="currency" onchange="updateCurrencySymbol()">
+                            {% for cur in currencies %}
+                            <option value="{{ cur.code }}"
+                                    data-symbol="{{ cur.symbol }}"
+                                    {% if cur.code == 'USD' %}selected{% endif %}>
+                                {{ cur.code }} - {{ cur.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-7">
+                        <div class="input-group">
+                            <span class="input-group-text" id="currency-symbol"
+                                  style="border-radius: var(--radius-sm) 0 0 var(--radius-sm); border: 2px solid #e2e8f0; border-right: none; min-width: 42px; justify-content: center;">
+                                $
+                            </span>
+                            <input type="number" class="form-control" id="amount" name="amount"
+                                   step="0.01" min="0.01" placeholder="0.00" required
+                                   style="border-left: none;" oninput="updateConversion()">
+                        </div>
+                    </div>
+                </div>
+                <!-- Conversion preview -->
+                <div id="conversion-preview" class="mt-2 d-none">
+                    <small class="text-muted d-flex align-items-center gap-1">
+                        <i class="fas fa-exchange-alt"></i>
+                        <span id="conversion-text"></span>
+                    </small>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label for="description" class="form-label fw-semibold">
+                    <i class="fas fa-pen me-1 text-muted"></i> Description
+                </label>
+                <input type="text" class="form-control" id="description" name="description"
+                       placeholder="e.g., Weekly grocery shopping" required>
+            </div>
+
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary py-2">
+                    <i class="fas fa-check me-2"></i> Add Expense
+                </button>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary py-2"
+                   style="border-radius: var(--radius-sm);">
+                    <i class="fas fa-arrow-left me-2"></i> Back to Dashboard
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const RATES = {{ currency_rates | tojson }};
+
+    function updateCurrencySymbol() {
+        const sel = document.getElementById('currency');
+        const opt = sel.options[sel.selectedIndex];
+        document.getElementById('currency-symbol').textContent = opt.dataset.symbol || opt.value;
+        updateConversion();
+    }
+
+    function updateConversion() {
+        const code = document.getElementById('currency').value;
+        const amount = parseFloat(document.getElementById('amount').value);
+        const preview = document.getElementById('conversion-preview');
+        const text = document.getElementById('conversion-text');
+
+        if (code === 'USD' || isNaN(amount) || amount <= 0) {
+            preview.classList.add('d-none');
+            return;
+        }
+
+        const rate = RATES[code] || 1;
+        const usd = (amount * rate).toFixed(2);
+        text.textContent = '\u2248 $' + usd + ' USD';
+        preview.classList.remove('d-none');
+    }
+</script>
+{% endblock %}

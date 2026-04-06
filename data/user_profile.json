@@ -1,0 +1,31 @@
+{
+  "name": "Shahrukh Khan",
+  "monthly_income": 5000.00,
+  "currency": "USD",
+  "budget_limits": {
+    "food": 400.00,
+    "transport": 200.00,
+    "entertainment": 250.00,
+    "bills": 600.00,
+    "healthcare": 300.00
+  },
+  "financial_goals": [
+    {
+      "name": "Emergency Fund",
+      "target_amount": 10000.00,
+      "current_amount": 3500.00,
+      "target_date": "2026-12-31"
+    },
+    {
+      "name": "Vacation Fund",
+      "target_amount": 3000.00,
+      "current_amount": 800.00,
+      "target_date": "2026-08-01"
+    }
+  ],
+  "preferences": {
+    "alert_threshold_percentage": 80,
+    "preferred_savings_rate": 20,
+    "report_frequency": "weekly"
+  }
+}

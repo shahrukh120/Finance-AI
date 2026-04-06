@@ -1,0 +1,29 @@
+{
+  "categories": [
+    {
+      "name": "food",
+      "description": "Groceries, restaurants, cafes, and food delivery",
+      "subcategories": ["groceries", "restaurants", "cafes", "delivery"]
+    },
+    {
+      "name": "transport",
+      "description": "Public transit, ride-sharing, fuel, and vehicle maintenance",
+      "subcategories": ["public_transit", "ride_sharing", "fuel", "maintenance"]
+    },
+    {
+      "name": "entertainment",
+      "description": "Movies, games, subscriptions, events, and hobbies",
+      "subcategories": ["movies", "games", "subscriptions", "events", "hobbies"]
+    },
+    {
+      "name": "bills",
+      "description": "Utilities, rent, phone, internet, and insurance",
+      "subcategories": ["utilities", "rent", "phone", "internet", "insurance"]
+    },
+    {
+      "name": "healthcare",
+      "description": "Doctor visits, medicines, dental, and health insurance",
+      "subcategories": ["doctor", "medicines", "dental", "insurance"]
+    }
+  ]
+}

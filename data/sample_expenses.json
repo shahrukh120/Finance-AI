@@ -1,0 +1,184 @@
+[
+  {
+    "id": 1,
+    "date": "2026-03-01",
+    "category": "food",
+    "amount": 45.0,
+    "description": "Grocery shopping at supermarket"
+  },
+  {
+    "id": 2,
+    "date": "2026-03-02",
+    "category": "transport",
+    "amount": 15.5,
+    "description": "Uber ride to office"
+  },
+  {
+    "id": 3,
+    "date": "2026-03-03",
+    "category": "entertainment",
+    "amount": 25.0,
+    "description": "Movie tickets"
+  },
+  {
+    "id": 4,
+    "date": "2026-03-04",
+    "category": "bills",
+    "amount": 120.0,
+    "description": "Electricity bill payment"
+  },
+  {
+    "id": 5,
+    "date": "2026-03-05",
+    "category": "healthcare",
+    "amount": 60.0,
+    "description": "Doctor consultation"
+  },
+  {
+    "id": 6,
+    "date": "2026-03-06",
+    "category": "food",
+    "amount": 32.0,
+    "description": "Restaurant dinner"
+  },
+  {
+    "id": 7,
+    "date": "2026-03-07",
+    "category": "transport",
+    "amount": 50.0,
+    "description": "Weekly metro pass"
+  },
+  {
+    "id": 8,
+    "date": "2026-03-08",
+    "category": "food",
+    "amount": 28.5,
+    "description": "Grocery shopping"
+  },
+  {
+    "id": 9,
+    "date": "2026-03-09",
+    "category": "entertainment",
+    "amount": 60.0,
+    "description": "Concert tickets"
+  },
+  {
+    "id": 10,
+    "date": "2026-03-10",
+    "category": "bills",
+    "amount": 85.0,
+    "description": "Internet bill"
+  },
+  {
+    "id": 11,
+    "date": "2026-03-11",
+    "category": "food",
+    "amount": 18.0,
+    "description": "Lunch at cafe"
+  },
+  {
+    "id": 12,
+    "date": "2026-03-12",
+    "category": "healthcare",
+    "amount": 150.0,
+    "description": "Dental checkup"
+  },
+  {
+    "id": 13,
+    "date": "2026-03-13",
+    "category": "transport",
+    "amount": 22.0,
+    "description": "Taxi to airport"
+  },
+  {
+    "id": 14,
+    "date": "2026-03-14",
+    "category": "food",
+    "amount": 55.0,
+    "description": "Weekly groceries"
+  },
+  {
+    "id": 15,
+    "date": "2026-03-15",
+    "category": "entertainment",
+    "amount": 35.0,
+    "description": "Netflix and Spotify subscription"
+  },
+  {
+    "id": 16,
+    "date": "2026-03-16",
+    "category": "bills",
+    "amount": 200.0,
+    "description": "Rent utilities"
+  },
+  {
+    "id": 17,
+    "date": "2026-03-17",
+    "category": "food",
+    "amount": 42.0,
+    "description": "Dinner with friends"
+  },
+  {
+    "id": 18,
+    "date": "2026-03-18",
+    "category": "transport",
+    "amount": 12.0,
+    "description": "Bus fare"
+  },
+  {
+    "id": 19,
+    "date": "2026-03-19",
+    "category": "healthcare",
+    "amount": 35.0,
+    "description": "Pharmacy medicines"
+  },
+  {
+    "id": 20,
+    "date": "2026-03-20",
+    "category": "entertainment",
+    "amount": 80.0,
+    "description": "Gaming subscription and purchase"
+  },
+  {
+    "id": 21,
+    "date": "2026-03-21",
+    "category": "food",
+    "amount": 65.0,
+    "description": "Large grocery haul"
+  },
+  {
+    "id": 22,
+    "date": "2026-03-22",
+    "category": "bills",
+    "amount": 95.0,
+    "description": "Mobile phone bill"
+  },
+  {
+    "id": 23,
+    "date": "2026-03-23",
+    "category": "transport",
+    "amount": 30.0,
+    "description": "Fuel for car"
+  },
+  {
+    "id": 24,
+    "date": "2026-03-25",
+    "category": "food",
+    "amount": 20.0,
+    "description": "Coffee and snacks"
+  },
+  {
+    "id": 25,
+    "date": "2026-03-27",
+    "category": "entertainment",
+    "amount": 45.0,
+    "description": "Bowling night"
+  },
+  {
+    "id": 26,
+    "date": "2026-03-29",
+    "category": "food",
+    "amount": 12.5,
+    "description": "Test lunch"
+  }
+]

@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+{% block title %}AI Analysis - Finance Manager{% endblock %}
+
+{% block content %}
+<div class="text-center mb-4">
+    <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3"
+         style="width:64px; height:64px; background: var(--gradient);">
+        <i class="fas fa-robot text-white fs-4"></i>
+    </div>
+    <h4 class="fw-bold">AI Financial Analysis</h4>
+    <p class="text-muted">
+        Our multi-agent system uses 3 AI agents to analyze your finances:<br>
+        <strong>Expense Tracker</strong> <i class="fas fa-arrow-right mx-1 small"></i>
+        <strong>Budget Analyzer</strong> <i class="fas fa-arrow-right mx-1 small"></i>
+        <strong>Financial Advisor</strong>
+    </p>
+</div>
+
+<!-- Agent Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card p-3 h-100">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <div class="stat-icon" style="background: var(--gradient-green); width:36px; height:36px; border-radius:8px;">
+                    <i class="fas fa-receipt" style="font-size:.8rem;"></i>
+                </div>
+                <h6 class="fw-bold mb-0">Expense Tracker</h6>
+            </div>
+            <small class="text-muted">
+                Analyzes all transactions, calculates category totals, and flags unusual spending patterns using the <strong>ReAct</strong> pattern.
+            </small>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-3 h-100">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <div class="stat-icon" style="background: var(--gradient-blue); width:36px; height:36px; border-radius:8px;">
+                    <i class="fas fa-scale-balanced" style="font-size:.8rem;"></i>
+                </div>
+                <h6 class="fw-bold mb-0">Budget Analyzer</h6>
+            </div>
+            <small class="text-muted">
+                Compares spending vs budget limits, calculates burn rates, and projects month-end totals using the <strong>Reflection</strong> pattern.
+            </small>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-3 h-100">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <div class="stat-icon" style="background: var(--gradient-orange); width:36px; height:36px; border-radius:8px;">
+                    <i class="fas fa-lightbulb" style="font-size:.8rem;"></i>
+                </div>
+                <h6 class="fw-bold mb-0">Financial Advisor</h6>
+            </div>
+            <small class="text-muted">
+                Synthesizes insights and provides personalized savings advice, budget adjustments, and goal progress using the <strong>Planning</strong> pattern.
+            </small>
+        </div>
+    </div>
+</div>
+
+<!-- Run Buttons -->
+<div class="card p-4 mb-4">
+    <div class="section-title">
+        <i class="fas fa-play-circle"></i> Run Analysis
+    </div>
+    <div class="row g-3">
+        <div class="col-md-6">
+            <div class="card p-3 border" style="box-shadow:none;" id="seq-card">
+                <h6 class="fw-bold"><i class="fas fa-arrow-right-arrow-left me-1 text-primary"></i> Sequential Pipeline</h6>
+                <small class="text-muted d-block mb-3">
+                    Each agent runs in order. Output from one agent feeds into the next.
+                    Best for detailed, step-by-step analysis.
+                </small>
+                <button class="btn btn-primary w-100" onclick="runAnalysis('sequential')" id="btn-sequential">
+                    <i class="fas fa-play me-1"></i> Run Sequential
+                </button>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card p-3 border" style="box-shadow:none;" id="hier-card">
+                <h6 class="fw-bold"><i class="fas fa-sitemap me-1 text-primary"></i> Hierarchical</h6>
+                <small class="text-muted d-block mb-3">
+                    Financial Advisor acts as manager, coordinating all agents.
+                    Best for a comprehensive single report.
+                </small>
+                <button class="btn btn-outline-primary w-100" onclick="runAnalysis('hierarchical')" id="btn-hierarchical">
+                    <i class="fas fa-play me-1"></i> Run Hierarchical
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Progress Indicator (hidden by default) -->
+<div class="card p-4 mb-4 d-none" id="progress-card">
+    <div class="text-center py-3">
+        <div class="mb-3">
+            <div class="spinner-border text-primary" role="status" style="width:3rem; height:3rem;">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+        <h5 class="fw-bold" id="progress-title">AI Agents Working...</h5>
+        <p class="text-muted mb-2" id="progress-text">
+            The agents are analyzing your financial data. This may take 2-5 minutes due to API rate limits.
+        </p>
+        <div class="d-flex justify-content-center gap-4 mt-3">
+            <div class="text-center" id="step-1">
+                <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-1"
+                     style="width:32px; height:32px; background: var(--gradient-green);">
+                    <i class="fas fa-receipt text-white" style="font-size:.7rem;"></i>
+                </div>
+                <div style="font-size:.7rem;" class="fw-semibold text-muted">Tracking</div>
+            </div>
+            <div class="text-center opacity-50" id="step-2">
+                <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-1"
+                     style="width:32px; height:32px; background: var(--gradient-blue);">
+                    <i class="fas fa-scale-balanced text-white" style="font-size:.7rem;"></i>
+                </div>
+                <div style="font-size:.7rem;" class="fw-semibold text-muted">Analyzing</div>
+            </div>
+            <div class="text-center opacity-50" id="step-3">
+                <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-1"
+                     style="width:32px; height:32px; background: var(--gradient-orange);">
+                    <i class="fas fa-lightbulb text-white" style="font-size:.7rem;"></i>
+                </div>
+                <div style="font-size:.7rem;" class="fw-semibold text-muted">Advising</div>
+            </div>
+        </div>
+        <small class="text-muted mt-3 d-block" id="elapsed-time">Elapsed: 0s</small>
+    </div>
+</div>
+
+<!-- Result (hidden by default) -->
+<div class="card p-4 d-none" id="result-card">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="section-title mb-0">
+            <i class="fas fa-file-lines"></i> Analysis Result
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('export_pdf') }}" class="btn btn-outline-danger btn-sm">
+                <i class="fas fa-file-pdf me-1"></i> Download Report
+            </a>
+            <span class="badge bg-success px-3 py-2 rounded-pill" id="result-badge">
+                <i class="fas fa-check me-1"></i> Complete
+            </span>
+        </div>
+    </div>
+    <div class="analysis-result" id="result-content"></div>
+</div>
+
+<!-- Error (hidden by default) -->
+<div class="card p-4 d-none" id="error-card">
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="fas fa-exclamation-triangle text-danger fs-4"></i>
+        <h5 class="fw-bold mb-0 text-danger">Analysis Failed</h5>
+    </div>
+    <div class="alert alert-danger border-0" id="error-content"></div>
+    <button class="btn btn-outline-danger" onclick="resetUI()">
+        <i class="fas fa-redo me-1"></i> Try Again
+    </button>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let pollInterval = null;
+    let elapsedInterval = null;
+    let startTime = null;
+    let stepIndex = 0;
+
+    function runAnalysis(pattern) {
+        // Disable buttons
+        document.getElementById('btn-sequential').disabled = true;
+        document.getElementById('btn-hierarchical').disabled = true;
+
+        // Show progress
+        document.getElementById('progress-card').classList.remove('d-none');
+        document.getElementById('result-card').classList.add('d-none');
+        document.getElementById('error-card').classList.add('d-none');
+
+        // Start elapsed timer
+        startTime = Date.now();
+        stepIndex = 0;
+        elapsedInterval = setInterval(updateElapsed, 1000);
+
+        // Animate steps
+        animateSteps();
+
+        // Start analysis
+        fetch('/api/run-analysis', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pattern: pattern })
+        })
+        .then(res => res.json())
+        .then(data => {
+            pollInterval = setInterval(() => pollStatus(data.task_id), 5000);
+        })
+        .catch(err => {
+            showError('Failed to start analysis: ' + err.message);
+        });
+    }
+
+    function pollStatus(taskId) {
+        fetch('/api/analysis-status/' + taskId)
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'complete') {
+                    clearInterval(pollInterval);
+                    clearInterval(elapsedInterval);
+                    showResult(data.result);
+                } else if (data.status === 'error') {
+                    clearInterval(pollInterval);
+                    clearInterval(elapsedInterval);
+                    showError(data.error);
+                }
+            })
+            .catch(err => {
+                // Silently retry on network issues
+            });
+    }
+
+    function updateElapsed() {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        const min = Math.floor(elapsed / 60);
+        const sec = elapsed % 60;
+        const text = min > 0 ? `${min}m ${sec}s` : `${sec}s`;
+        document.getElementById('elapsed-time').textContent = 'Elapsed: ' + text;
+    }
+
+    function animateSteps() {
+        const steps = ['step-1', 'step-2', 'step-3'];
+        let current = 0;
+
+        setInterval(() => {
+            // Reset all
+            steps.forEach(s => document.getElementById(s).classList.add('opacity-50'));
+            // Highlight current
+            document.getElementById(steps[current]).classList.remove('opacity-50');
+            current = (current + 1) % steps.length;
+        }, 20000); // Cycle every 20s (roughly matches agent execution time)
+
+        // Start with first active
+        document.getElementById('step-1').classList.remove('opacity-50');
+    }
+
+    function showResult(result) {
+        document.getElementById('progress-card').classList.add('d-none');
+        document.getElementById('result-card').classList.remove('d-none');
+
+        // Format the result text nicely
+        const formatted = result
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/^- /gm, '&bull; ')
+            .replace(/^\d+\.\s/gm, (match) => '<strong>' + match + '</strong>');
+
+        document.getElementById('result-content').innerHTML = formatted;
+
+        // Re-enable buttons
+        document.getElementById('btn-sequential').disabled = false;
+        document.getElementById('btn-hierarchical').disabled = false;
+    }
+
+    function showError(message) {
+        document.getElementById('progress-card').classList.add('d-none');
+        document.getElementById('error-card').classList.remove('d-none');
+
+        // Check if it's a rate limit error
+        if (message.includes('RateLimitError') || message.includes('rate_limit')) {
+            document.getElementById('error-content').innerHTML =
+                '<strong>Groq API Rate Limit Exceeded</strong><br>' +
+                'The free tier of Groq has limited tokens per minute (12K TPM). ' +
+                'Please wait 1-2 minutes and try again, or upgrade your Groq plan at ' +
+                '<a href="https://console.groq.com/settings/billing" target="_blank">console.groq.com</a>.';
+        } else {
+            document.getElementById('error-content').textContent = message;
+        }
+
+        document.getElementById('btn-sequential').disabled = false;
+        document.getElementById('btn-hierarchical').disabled = false;
+    }
+
+    function resetUI() {
+        document.getElementById('error-card').classList.add('d-none');
+        document.getElementById('result-card').classList.add('d-none');
+        document.getElementById('progress-card').classList.add('d-none');
+        document.getElementById('btn-sequential').disabled = false;
+        document.getElementById('btn-hierarchical').disabled = false;
+    }
+</script>
+{% endblock %}

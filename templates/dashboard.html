@@ -1,0 +1,987 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Finance Manager{% endblock %}
+
+{% block content %}
+
+<!-- Budget Alerts -->
+{% if alerts %}
+<div class="mb-4">
+    {% for alert in alerts %}
+    <div class="alert-finance {{ alert.severity }} d-flex align-items-center mb-2">
+        <i class="fas {% if alert.severity == 'critical' %}fa-exclamation-triangle{% else %}fa-exclamation-circle{% endif %} me-2 fs-5"></i>
+        <span>{{ alert.message }}</span>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Summary Row -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card summary-card p-3">
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="label"><i class="fas fa-arrow-down me-1"></i> Monthly Inflow</div>
+                {% if income_breakdown.count > 0 %}
+                <span class="badge bg-success rounded-pill" style="font-size:.6rem;">{{ income_breakdown.count }} entries</span>
+                {% endif %}
+            </div>
+            <div class="display-value">${{ "{:,.2f}".format(income) }}</div>
+            {% if income_breakdown.sources %}
+            <div class="mt-1">
+                {% for src in income_breakdown.sources[:3] %}
+                <small class="d-block text-muted" style="font-size:.68rem;">
+                    <i class="fas {{ src.icon }} me-1" style="color: {{ src.color }};"></i>
+                    {{ src.label }}: ${{ "{:,.0f}".format(src.amount) }}
+                </small>
+                {% endfor %}
+            </div>
+            {% elif income == 0 and expected_income > 0 %}
+            <div class="mt-1">
+                <small class="text-muted" style="font-size:.68rem;">
+                    <i class="fas fa-info-circle me-1"></i>
+                    No inflows logged yet.
+                    <a href="{{ url_for('add_income') }}" style="font-size:.68rem;">Add income</a>
+                </small>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card summary-card orange p-3">
+            <div class="label"><i class="fas fa-arrow-up me-1"></i> Total Spent</div>
+            <div class="display-value">${{ "{:,.2f}".format(total_spent) }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card summary-card {% if (income - total_spent) < 0 %}red{% else %}green{% endif %} p-3">
+            <div class="label"><i class="fas fa-piggy-bank me-1"></i> Remaining</div>
+            <div class="display-value">${{ "{:,.2f}".format(income - total_spent) }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card summary-card {% if ((total_spent / total_budget * 100) if total_budget > 0 else 0) > 80 %}red{% else %}blue{% endif %} p-3">
+            <div class="label"><i class="fas fa-chart-line me-1"></i> Budget Used</div>
+            <div class="display-value">{{ "{:.0f}".format((total_spent / total_budget * 100) if total_budget > 0 else 0) }}%</div>
+        </div>
+    </div>
+</div>
+
+<!-- Budget Cards -->
+<div class="section-title">
+    <i class="fas fa-wallet"></i> Budget Overview
+</div>
+<div class="row g-3 mb-4">
+    {% for bs in budget_statuses %}
+    <div class="col-md-4 col-lg">
+        <div class="card budget-card p-3" style="border-left-color: {{ bs.color }};">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="stat-icon" style="background: {{ bs.color }}; width:36px; height:36px; border-radius:8px;">
+                        <i class="fas {{ bs.icon }}" style="font-size:.85rem;"></i>
+                    </div>
+                    <div>
+                        <div class="fw-bold text-capitalize" style="font-size:.9rem;">{{ bs.category }}</div>
+                    </div>
+                </div>
+                <span class="status-badge
+                    {% if bs.status == 'OVER_BUDGET' %}bg-danger text-white
+                    {% elif bs.status == 'WARNING' %}bg-warning text-dark
+                    {% elif bs.status == 'ON_TRACK' %}bg-info text-white
+                    {% else %}bg-success text-white{% endif %}">
+                    {{ bs.status.replace('_', ' ') }}
+                </span>
+            </div>
+            <div class="d-flex justify-content-between align-items-end mb-2">
+                <span class="fw-bold" style="font-size:1.1rem;">${{ "{:,.2f}".format(bs.total_spent) }}</span>
+                <small class="text-muted">of ${{ "{:,.0f}".format(bs.budget_limit) }}</small>
+            </div>
+            <div class="budget-progress">
+                <div class="budget-progress-bar" style="width: {{ [bs.percentage_used, 100] | min }}%; background: {{ bs.color }};"></div>
+            </div>
+            <div class="d-flex justify-content-between mt-1">
+                <small class="text-muted">{{ "{:.0f}".format(bs.percentage_used) }}% used</small>
+                <small class="text-muted">${{ "{:,.2f}".format(bs.remaining) }} left</small>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Charts + Goals Row -->
+<div class="row g-4 mb-4">
+    <!-- Spending Chart -->
+    <div class="col-lg-8">
+        <div class="card p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="section-title mb-0">
+                    <i class="fas fa-chart-pie"></i> Spending Breakdown
+                </div>
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-outline-primary active" onclick="switchChart('doughnut', this)">
+                        <i class="fas fa-chart-pie"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" onclick="switchChart('bar', this)">
+                        <i class="fas fa-chart-bar"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="spendingChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Financial Goals -->
+    <div class="col-lg-4">
+        <div class="card p-4 h-100">
+            <div class="section-title">
+                <i class="fas fa-bullseye"></i> Financial Goals
+            </div>
+            {% for goal in goals %}
+            <div class="{% if not loop.last %}mb-4{% endif %}">
+                <div class="d-flex justify-content-between align-items-start mb-1">
+                    <div>
+                        <div class="fw-bold" style="font-size:.9rem;">{{ goal.name }}</div>
+                        <small class="text-muted">Target: {{ goal.target_date }}</small>
+                    </div>
+                    <span class="fw-bold" style="color: var(--primary); font-size:.85rem;">
+                        {{ "{:.0f}".format(goal.percentage) }}%
+                    </span>
+                </div>
+                <div class="goal-progress mb-1">
+                    <div class="goal-progress-bar" style="width: {{ goal.percentage }}%;"></div>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <small class="text-muted">${{ "{:,.0f}".format(goal.current_amount) }}</small>
+                    <small class="text-muted">${{ "{:,.0f}".format(goal.target_amount) }}</small>
+                </div>
+            </div>
+            {% endfor %}
+
+            <div class="mt-auto pt-3">
+                <a href="{{ url_for('analysis') }}" class="btn btn-primary w-100 btn-sm">
+                    <i class="fas fa-robot me-1"></i> Get AI Advice
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Weekly / Monthly Spending Trend -->
+<div class="card p-4 mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="section-title mb-0">
+            <i class="fas fa-calendar-alt"></i> Spending Trend
+            <span class="text-muted fw-normal ms-2" style="font-size:.85rem;">{{ trend_data.view_label }}</span>
+        </div>
+        <div class="btn-group btn-group-sm" role="group">
+            <a href="{{ url_for('dashboard', view='weekly') }}"
+               class="btn btn-outline-primary {% if view_mode == 'weekly' %}active{% endif %}">
+                <i class="fas fa-calendar-week me-1"></i> Weekly
+            </a>
+            <a href="{{ url_for('dashboard', view='monthly') }}"
+               class="btn btn-outline-primary {% if view_mode == 'monthly' %}active{% endif %}">
+                <i class="fas fa-calendar me-1"></i> Monthly
+            </a>
+        </div>
+    </div>
+
+    <!-- View Summary Cards -->
+    <div class="row g-3 mb-3">
+        <div class="col-md-4">
+            <div class="bg-light rounded-3 p-3 text-center">
+                <div class="text-muted" style="font-size:.75rem; font-weight:600; text-transform:uppercase; letter-spacing:.5px;">
+                    {{ 'Weekly' if view_mode == 'weekly' else 'Monthly' }} Total
+                </div>
+                <div class="fw-bold fs-4" style="color: var(--primary);">${{ "{:,.2f}".format(trend_data.view_total) }}</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="bg-light rounded-3 p-3 text-center">
+                <div class="text-muted" style="font-size:.75rem; font-weight:600; text-transform:uppercase; letter-spacing:.5px;">
+                    Daily Average
+                </div>
+                <div class="fw-bold fs-4" style="color: #10b981;">${{ "{:,.2f}".format(trend_data.view_avg_daily) }}</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="bg-light rounded-3 p-3 text-center">
+                <div class="text-muted" style="font-size:.75rem; font-weight:600; text-transform:uppercase; letter-spacing:.5px;">
+                    Transactions
+                </div>
+                <div class="fw-bold fs-4" style="color: #3b82f6;">{{ trend_data.view_tx_count }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Trend Chart -->
+    <div style="position: relative; height: 280px;">
+        <canvas id="trendChart"></canvas>
+    </div>
+</div>
+
+<!-- Budget Forecast & Trends -->
+<div class="card p-4 mb-4">
+    <div class="section-title">
+        <i class="fas fa-chart-line"></i> Budget Forecast & Spending Trends
+    </div>
+
+    <!-- Forecast Cards -->
+    <div class="row g-3 mb-4">
+        {% for fi in forecast_data.forecast_items %}
+        <div class="col-md-4 col-lg">
+            <div class="rounded-3 p-3" style="border: 1px solid #e2e8f0; border-left: 4px solid {{ fi.color }};">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <div class="stat-icon" style="background: {{ fi.color }}; width:28px; height:28px; border-radius:6px;">
+                        <i class="fas {{ fi.icon }}" style="font-size:.7rem;"></i>
+                    </div>
+                    <span class="fw-bold text-capitalize" style="font-size:.85rem;">{{ fi.category }}</span>
+                    <span class="ms-auto badge {% if fi.forecast == 'WILL_EXCEED_BUDGET' %}bg-danger{% elif fi.forecast == 'AT_RISK' %}bg-warning text-dark{% else %}bg-success{% endif %}" style="font-size:.6rem;">
+                        {{ fi.forecast.replace('_', ' ') }}
+                    </span>
+                </div>
+                <div class="d-flex justify-content-between align-items-end mb-1">
+                    <div>
+                        <div class="text-muted" style="font-size:.65rem; text-transform:uppercase; letter-spacing:.5px;">Projected</div>
+                        <div class="fw-bold" style="font-size:1.05rem; color: {% if fi.forecast == 'WILL_EXCEED_BUDGET' %}#ef4444{% elif fi.forecast == 'AT_RISK' %}#f59e0b{% else %}#10b981{% endif %};">
+                            ${{ "{:,.2f}".format(fi.projected_month_end_total) }}
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <div class="text-muted" style="font-size:.65rem; text-transform:uppercase; letter-spacing:.5px;">Budget</div>
+                        <div style="font-size:.9rem;">${{ "{:,.0f}".format(fi.budget_limit) }}</div>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between" style="font-size:.72rem; color: #64748b;">
+                    <span>${{ "{:,.2f}".format(fi.daily_burn_rate) }}/day</span>
+                    {% if fi.rolling_avg_3m is not none %}
+                    <span>
+                        {% if fi.trend == 'INCREASING' %}<i class="fas fa-arrow-up text-danger"></i>
+                        {% elif fi.trend == 'DECREASING' %}<i class="fas fa-arrow-down text-success"></i>
+                        {% elif fi.trend == 'STABLE' %}<i class="fas fa-minus text-muted"></i>
+                        {% endif %}
+                        3mo avg: ${{ "{:,.0f}".format(fi.rolling_avg_3m) }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Two charts side by side -->
+    <div class="row g-4">
+        <!-- Forecast Bar Chart with projected overlay -->
+        <div class="col-lg-6">
+            <h6 class="fw-bold mb-3" style="font-size:.85rem; color:#64748b;">
+                <i class="fas fa-bullseye me-1"></i> Current vs Projected vs Budget
+            </h6>
+            <div style="position: relative; height: 280px;">
+                <canvas id="forecastChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Monthly Rolling Average Trend -->
+        <div class="col-lg-6">
+            <h6 class="fw-bold mb-3" style="font-size:.85rem; color:#64748b;">
+                <i class="fas fa-wave-square me-1"></i> Monthly Spending Trend (3-Month Rolling Avg)
+            </h6>
+            <div style="position: relative; height: 280px;">
+                <canvas id="rollingAvgChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Committed vs Discretionary Spend -->
+<div class="row g-4 mb-4">
+    <!-- Breakdown Chart -->
+    <div class="col-lg-5">
+        <div class="card p-4 h-100">
+            <div class="section-title">
+                <i class="fas fa-lock"></i> Committed vs Discretionary
+            </div>
+            <div class="row g-3 mb-3">
+                <div class="col-6">
+                    <div class="rounded-3 p-3 text-center" style="background: rgba(239,68,68,.08);">
+                        <div class="text-muted" style="font-size:.7rem; font-weight:600; text-transform:uppercase; letter-spacing:.5px;">
+                            Committed
+                        </div>
+                        <div class="fw-bold fs-5" style="color: #ef4444;">${{ "{:,.2f}".format(committed_data.committed_total) }}</div>
+                        <div style="font-size:.75rem; color:#64748b;">{{ committed_data.committed_pct }}% of income</div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="rounded-3 p-3 text-center" style="background: rgba(16,185,129,.08);">
+                        <div class="text-muted" style="font-size:.7rem; font-weight:600; text-transform:uppercase; letter-spacing:.5px;">
+                            Discretionary
+                        </div>
+                        <div class="fw-bold fs-5" style="color: #10b981;">${{ "{:,.2f}".format(committed_data.discretionary_total) }}</div>
+                        <div style="font-size:.75rem; color:#64748b;">{{ committed_data.discretionary_pct }}% of income</div>
+                    </div>
+                </div>
+            </div>
+            <div style="position: relative; height: 200px;">
+                <canvas id="committedChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recurring Items Table -->
+    <div class="col-lg-7">
+        <div class="card p-4 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="section-title mb-0">
+                    <i class="fas fa-redo-alt"></i> Detected Recurring Charges
+                    <span class="badge bg-primary ms-2">{{ committed_data.recurring | length }}</span>
+                </div>
+            </div>
+            {% if committed_data.recurring %}
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Description</th>
+                            <th>Category</th>
+                            <th class="text-end">Amount/mo</th>
+                            <th class="text-center">Confidence</th>
+                            <th class="text-center">Hits</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in committed_data.recurring %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="fas fa-sync-alt text-muted" style="font-size:.7rem;"></i>
+                                    <span style="font-size:.85rem;">{{ item.description }}</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="category-badge bg-{{ category_colors[item.category].badge }}" style="font-size:.7rem;">
+                                    {{ item.category | title }}
+                                </span>
+                            </td>
+                            <td class="text-end amount-cell">${{ "{:,.2f}".format(item.monthly_cost) }}</td>
+                            <td class="text-center">
+                                <span class="badge {% if item.confidence == 'high' %}bg-success{% else %}bg-warning text-dark{% endif %}" style="font-size:.65rem;">
+                                    {{ item.confidence | upper }}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <span class="text-muted" style="font-size:.85rem;">{{ item.occurrences }}x</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr style="border-top: 2px solid #e2e8f0;">
+                            <td colspan="2" class="fw-bold" style="font-size:.85rem;">Total Committed</td>
+                            <td class="text-end amount-cell fw-bold" style="color: #ef4444;">${{ "{:,.2f}".format(committed_data.committed_total) }}/mo</td>
+                            <td colspan="2"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center text-muted py-4">
+                <i class="fas fa-search fa-2x mb-2 d-block" style="opacity:.3;"></i>
+                <p style="font-size:.9rem;">No recurring charges detected yet.<br>
+                <small>Add more transactions across months to enable detection.</small></p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Recent Inflows -->
+{% if recent_incomes %}
+<div class="card table-card mb-4">
+    <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="section-title mb-0">
+                <i class="fas fa-arrow-down" style="color: #10b981;"></i> Recent Inflows
+            </div>
+            <a href="{{ url_for('add_income') }}" class="btn btn-sm" style="background: #10b981; color: white;">
+                <i class="fas fa-plus me-1"></i> Add Income
+            </a>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Source</th>
+                        <th>Description</th>
+                        <th class="text-end">Amount</th>
+                        <th class="text-center" style="width: 60px;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for inc in recent_incomes %}
+                    <tr>
+                        <td><span class="text-muted" style="font-size:.85rem;">{{ inc.date }}</span></td>
+                        <td>
+                            <span class="badge" style="background: {{ inc.source_color }}22; color: {{ inc.source_color }}; font-size:.72rem;">
+                                <i class="fas {{ inc.source_icon }} me-1" style="font-size:.6rem;"></i>
+                                {{ inc.source_label }}
+                            </span>
+                        </td>
+                        <td style="font-size:.85rem;">{{ inc.description }}</td>
+                        <td class="text-end" style="font-size:.9rem; font-weight: 600; color: #10b981;">
+                            {{ inc.display_symbol }}{{ "{:,.2f}".format(inc.display_amount) }}
+                            <span class="text-muted" style="font-size:.7rem;">{{ inc.display_currency }}</span>
+                            {% if inc.is_foreign %}
+                            <br><small class="text-muted" style="font-size:.65rem;">
+                                ≈ ${{ "{:,.2f}".format(inc.amount_usd) }} USD
+                            </small>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <form method="POST" action="{{ url_for('delete_income', income_id=inc.id) }}"
+                                  onsubmit="return confirm('Delete this {{ inc.display_symbol }}{{ '{:,.2f}'.format(inc.display_amount) }} {{ inc.display_currency }} income?');"
+                                  style="display:inline;">
+                                <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-1" title="Delete">
+                                    <i class="fas fa-trash-alt" style="font-size:.75rem;"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="card p-4 mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <div class="section-title mb-1">
+                <i class="fas fa-arrow-down" style="color: #10b981;"></i> Money Inflows
+            </div>
+            <p class="text-muted mb-0" style="font-size:.85rem;">
+                No income logged yet. Add your salary, freelance earnings, or any other money received
+                so your dashboard reflects real inflows.
+            </p>
+        </div>
+        <a href="{{ url_for('add_income') }}" class="btn btn-sm ms-3" style="background: #10b981; color: white; white-space: nowrap;">
+            <i class="fas fa-plus me-1"></i> Add Income
+        </a>
+    </div>
+</div>
+{% endif %}
+
+<!-- Recent Transactions -->
+<div class="card table-card">
+    <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="section-title mb-0">
+                <i class="fas fa-receipt"></i> Recent Transactions
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('export_csv') }}" class="btn btn-outline-success btn-sm" title="Download CSV">
+                    <i class="fas fa-file-csv me-1"></i> CSV
+                </a>
+                <a href="{{ url_for('export_pdf') }}" class="btn btn-outline-danger btn-sm" title="Download Report PDF">
+                    <i class="fas fa-file-pdf me-1"></i> Report
+                </a>
+                <a href="{{ url_for('add_expense') }}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus me-1"></i> Add New
+                </a>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Category</th>
+                        <th>Description</th>
+                        <th class="text-end">Amount</th>
+                        <th class="text-center" style="width: 60px;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for exp in recent %}
+                    <tr>
+                        <td>
+                            <span class="text-muted" style="font-size:.85rem;">{{ exp.date }}</span>
+                        </td>
+                        <td>
+                            <span class="category-badge bg-{{ category_colors[exp.category].badge }}">
+                                <i class="fas {{ category_colors[exp.category] | default({'badge':'secondary'}) }} me-1" style="font-size:.65rem;"></i>
+                                {{ exp.category | title }}
+                            </span>
+                        </td>
+                        <td>{{ exp.description }}</td>
+                        <td class="text-end amount-cell">
+                            {{ exp.display_symbol }}{{ "{:,.2f}".format(exp.display_amount) }}
+                            <span class="text-muted" style="font-size:.7rem;">{{ exp.display_currency }}</span>
+                            {% if exp.is_foreign %}
+                            <br><small class="text-muted" style="font-size:.68rem;">
+                                ≈ ${{ "{:,.2f}".format(exp.amount_usd) }} USD
+                            </small>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <form method="POST" action="{{ url_for('delete_expense', expense_id=exp.id) }}"
+                                  onsubmit="return confirm('Delete this {{ exp.display_symbol }}{{ '{:,.2f}'.format(exp.display_amount) }} {{ exp.display_currency }} {{ exp.category }} expense?');"
+                                  style="display:inline;">
+                                <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-1" title="Delete">
+                                    <i class="fas fa-trash-alt" style="font-size:.75rem;"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const chartData = {{ chart_data | tojson }};
+
+    let currentChart = null;
+
+    function createChart(type) {
+        const ctx = document.getElementById('spendingChart').getContext('2d');
+
+        if (currentChart) currentChart.destroy();
+
+        const config = {
+            type: type,
+            data: {
+                labels: chartData.labels,
+                datasets: type === 'bar' ? [
+                    {
+                        label: 'Spent',
+                        data: chartData.values,
+                        backgroundColor: chartData.colors.map(c => c + 'cc'),
+                        borderColor: chartData.colors,
+                        borderWidth: 2,
+                        borderRadius: 8,
+                        barPercentage: 0.6,
+                    },
+                    {
+                        label: 'Budget',
+                        data: chartData.budgets,
+                        backgroundColor: chartData.colors.map(c => c + '22'),
+                        borderColor: chartData.colors.map(c => c + '66'),
+                        borderWidth: 2,
+                        borderRadius: 8,
+                        barPercentage: 0.6,
+                        borderDash: [5, 5],
+                    }
+                ] : [{
+                    data: chartData.values,
+                    backgroundColor: chartData.colors.map(c => c + 'cc'),
+                    borderColor: '#fff',
+                    borderWidth: 3,
+                    hoverOffset: 10,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: type === 'bar' ? 'top' : 'right',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 16,
+                            font: { family: 'Inter', size: 12 }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label
+                                    ? context.dataset.label + ': $' + context.parsed.y.toFixed(2)
+                                    : context.label + ': $' + context.parsed.toFixed(2);
+                            }
+                        }
+                    }
+                },
+                ...(type === 'bar' ? {
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: v => '$' + v,
+                                font: { family: 'Inter' }
+                            },
+                            grid: { color: '#f1f5f9' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { font: { family: 'Inter' } }
+                        }
+                    }
+                } : {})
+            }
+        };
+
+        currentChart = new Chart(ctx, config);
+    }
+
+    function switchChart(type, btn) {
+        document.querySelectorAll('.btn-group .btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        createChart(type);
+    }
+
+    createChart('doughnut');
+
+    // ─── Committed vs Discretionary Chart ────────────────────────────
+    const committedData = {{ committed_data | tojson }};
+
+    const committedCtx = document.getElementById('committedChart').getContext('2d');
+    new Chart(committedCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Committed (Recurring)', 'Discretionary', 'Unspent'],
+            datasets: [{
+                data: [
+                    committedData.committed_total,
+                    committedData.discretionary_total,
+                    Math.max({{ income }} - {{ total_spent }}, 0)
+                ],
+                backgroundColor: [
+                    '#ef4444cc',
+                    '#10b981cc',
+                    '#e2e8f0',
+                ],
+                borderColor: '#fff',
+                borderWidth: 3,
+                hoverOffset: 8,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '65%',
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 12,
+                        font: { family: 'Inter', size: 11 },
+                        boxWidth: 8,
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const val = context.parsed;
+                            const pct = (val / {{ income }} * 100).toFixed(1);
+                            return context.label + ': $' + val.toFixed(2) + ' (' + pct + '%)';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // ─── Spending Trend Chart ─────────────────────────────────────────
+    const trendData = {{ trend_data | tojson }};
+
+    const trendCtx = document.getElementById('trendChart').getContext('2d');
+
+    // Build stacked bar datasets for each category
+    const categoryDatasets = trendData.category_datasets.map(ds => ({
+        label: ds.label,
+        data: ds.data,
+        backgroundColor: ds.color + 'aa',
+        borderColor: ds.color,
+        borderWidth: 1,
+        borderRadius: 4,
+        barPercentage: 0.7,
+        categoryPercentage: 0.8,
+    }));
+
+    // Add a line dataset for running total trend
+    const cumulativeValues = [];
+    let runningTotal = 0;
+    trendData.values.forEach(v => {
+        runningTotal += v;
+        cumulativeValues.push(Math.round(runningTotal * 100) / 100);
+    });
+
+    const trendChart = new Chart(trendCtx, {
+        type: 'bar',
+        data: {
+            labels: trendData.labels,
+            datasets: [
+                ...categoryDatasets,
+                {
+                    label: 'Cumulative',
+                    data: cumulativeValues,
+                    type: 'line',
+                    borderColor: '#6366f1',
+                    backgroundColor: 'rgba(99, 102, 241, 0.08)',
+                    borderWidth: 2.5,
+                    pointBackgroundColor: '#6366f1',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                    fill: true,
+                    tension: 0.3,
+                    yAxisID: 'y1',
+                    order: 0,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 12,
+                        font: { family: 'Inter', size: 11 },
+                        boxWidth: 8,
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': $' + context.parsed.y.toFixed(2);
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: {
+                        font: { family: 'Inter', size: 10 },
+                        maxRotation: 45,
+                    }
+                },
+                y: {
+                    stacked: true,
+                    beginAtZero: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Daily ($)',
+                        font: { family: 'Inter', size: 11 },
+                    },
+                    ticks: {
+                        callback: v => '$' + v,
+                        font: { family: 'Inter', size: 10 }
+                    },
+                    grid: { color: '#f1f5f9' }
+                },
+                y1: {
+                    beginAtZero: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'Cumulative ($)',
+                        font: { family: 'Inter', size: 11 },
+                    },
+                    ticks: {
+                        callback: v => '$' + v,
+                        font: { family: 'Inter', size: 10 }
+                    },
+                    grid: { drawOnChartArea: false },
+                }
+            }
+        }
+    });
+
+    // ─── Forecast Chart: Current vs Projected vs Budget ─────────────
+    const forecastData = {{ forecast_data | tojson }};
+
+    const forecastCtx = document.getElementById('forecastChart').getContext('2d');
+    const fcItems = forecastData.forecast_items;
+
+    new Chart(forecastCtx, {
+        type: 'bar',
+        data: {
+            labels: fcItems.map(f => f.category.charAt(0).toUpperCase() + f.category.slice(1)),
+            datasets: [
+                {
+                    label: 'Spent So Far',
+                    data: fcItems.map(f => f.current_total),
+                    backgroundColor: fcItems.map(f => f.color + 'cc'),
+                    borderColor: fcItems.map(f => f.color),
+                    borderWidth: 2,
+                    borderRadius: 6,
+                    barPercentage: 0.55,
+                    categoryPercentage: 0.75,
+                },
+                {
+                    label: 'Projected Total',
+                    data: fcItems.map(f => f.projected_month_end_total),
+                    backgroundColor: fcItems.map(f => f.color + '33'),
+                    borderColor: fcItems.map(f => f.color),
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    borderRadius: 6,
+                    barPercentage: 0.55,
+                    categoryPercentage: 0.75,
+                },
+                {
+                    label: 'Budget Limit',
+                    data: fcItems.map(f => f.budget_limit),
+                    type: 'line',
+                    borderColor: '#ef4444',
+                    borderWidth: 2,
+                    borderDash: [8, 4],
+                    pointBackgroundColor: '#ef4444',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    fill: false,
+                    tension: 0,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 10,
+                        font: { family: 'Inter', size: 10 },
+                        boxWidth: 8,
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) {
+                            return ctx.dataset.label + ': $' + ctx.parsed.y.toFixed(2);
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: v => '$' + v,
+                        font: { family: 'Inter', size: 10 }
+                    },
+                    grid: { color: '#f1f5f9' }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { font: { family: 'Inter', size: 10 } }
+                }
+            }
+        }
+    });
+
+    // ─── Rolling Average Trend Chart ─────────────────────────────────
+    const rollingCtx = document.getElementById('rollingAvgChart').getContext('2d');
+    const monthLabels = forecastData.month_labels;
+
+    // Per-category rolling average lines
+    const rollingDatasets = forecastData.category_datasets.map(ds => ({
+        label: ds.label + ' (3mo avg)',
+        data: ds.rolling_avg,
+        borderColor: ds.color,
+        backgroundColor: ds.color + '11',
+        borderWidth: 2,
+        pointBackgroundColor: ds.color,
+        pointBorderColor: '#fff',
+        pointBorderWidth: 1.5,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        fill: false,
+        tension: 0.35,
+    }));
+
+    // Overall rolling average (thicker, emphasized)
+    rollingDatasets.push({
+        label: 'Overall (3mo avg)',
+        data: forecastData.overall_rolling_avg,
+        borderColor: '#1e293b',
+        backgroundColor: 'rgba(30, 41, 59, 0.06)',
+        borderWidth: 3,
+        pointBackgroundColor: '#1e293b',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        fill: true,
+        tension: 0.35,
+    });
+
+    new Chart(rollingCtx, {
+        type: 'line',
+        data: {
+            labels: monthLabels,
+            datasets: rollingDatasets,
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 10,
+                        font: { family: 'Inter', size: 10 },
+                        boxWidth: 8,
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) {
+                            const val = ctx.parsed.y;
+                            return val !== null ? ctx.dataset.label + ': $' + val.toFixed(2) : '';
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Monthly Spend ($)',
+                        font: { family: 'Inter', size: 11 },
+                    },
+                    ticks: {
+                        callback: v => '$' + v,
+                        font: { family: 'Inter', size: 10 }
+                    },
+                    grid: { color: '#f1f5f9' }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: {
+                        font: { family: 'Inter', size: 10 },
+                        maxRotation: 45,
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

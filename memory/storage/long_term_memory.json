@@ -1,0 +1,45 @@
+{
+  "additional_transactions": [
+    {
+      "category": "entertainment",
+      "amount": 99.99,
+      "description": "Persistence test",
+      "id": 27,
+      "date": "2026-04-03"
+    },
+    {
+      "category": "entertainment",
+      "amount": 99.99,
+      "description": "Persistence test",
+      "id": 28,
+      "date": "2026-04-03"
+    },
+    {
+      "category": "entertainment",
+      "amount": 99.99,
+      "description": "Persistence test",
+      "id": 29,
+      "date": "2026-04-03"
+    }
+  ],
+  "financial_goals": [
+    {
+      "name": "Emergency Fund",
+      "target_amount": 10000.0,
+      "current_amount": 3500.0,
+      "target_date": "2026-12-31"
+    },
+    {
+      "name": "Vacation Fund",
+      "target_amount": 3000.0,
+      "current_amount": 800.0,
+      "target_date": "2026-08-01"
+    }
+  ],
+  "preferences": {
+    "alert_threshold_percentage": 80,
+    "preferred_savings_rate": 20,
+    "report_frequency": "weekly"
+  },
+  "last_saved": "2026-04-03T01:38:40.880521"
+}

@@ -1,0 +1,11 @@
+crewai[tools]
+litellm
+python-dotenv
+flask
+flask-sqlalchemy
+flask-login
+psycopg2-binary
+gunicorn
+pandas
+reportlab
+pytest

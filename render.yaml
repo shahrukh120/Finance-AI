@@ -1,0 +1,26 @@
+databases:
+  - name: finance-ai-db
+    plan: free
+    databaseName: finance_ai
+    user: finance_ai_user
+
+services:
+  - type: web
+    name: finance-ai
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn wsgi:app
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: finance-ai-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: RENDER
+        value: "true"
+      - key: GROQ_API_KEY
+        sync: false
+      - key: PYTHON_VERSION
+        value: "3.11.9"

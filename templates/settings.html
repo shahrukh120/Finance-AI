@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Settings - Finance Manager{% endblock %}
+
+{% block content %}
+<div class="form-card">
+    <div class="text-center mb-4">
+        <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3"
+             style="width:64px; height:64px; background: var(--gradient);">
+            <i class="fas fa-cog text-white fs-4"></i>
+        </div>
+        <h4 class="fw-bold">Account Settings</h4>
+        <p class="text-muted">Manage your profile and budget preferences</p>
+    </div>
+
+    <div class="card p-4 mb-4">
+        <h6 class="fw-bold mb-3"><i class="fas fa-user me-2 text-primary"></i> Profile</h6>
+        <form method="POST" action="{{ url_for('settings') }}">
+            <div class="mb-3">
+                <label for="name" class="form-label fw-semibold">Display Name</label>
+                <input type="text" class="form-control" id="name" name="name"
+                       value="{{ current_user.name }}" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="monthly_income" class="form-label fw-semibold">
+                    Expected Monthly Income (USD)
+                </label>
+                <div class="input-group">
+                    <span class="input-group-text" style="border: 2px solid #e2e8f0; border-right: none;">$</span>
+                    <input type="number" class="form-control" id="monthly_income" name="monthly_income"
+                           value="{{ current_user.monthly_income }}" step="0.01" min="0"
+                           style="border-left: none;">
+                </div>
+                <small class="text-muted">
+                    This is used as a fallback when you haven't logged any income for the month.
+                    Once you add actual inflows, the dashboard uses those instead.
+                </small>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label for="alert_threshold" class="form-label fw-semibold">
+                        Budget Alert Threshold
+                    </label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" id="alert_threshold" name="alert_threshold"
+                               value="{{ current_user.alert_threshold_percentage }}" min="1" max="100">
+                        <span class="input-group-text" style="border: 2px solid #e2e8f0; border-left: none;">%</span>
+                    </div>
+                    <small class="text-muted">Alert when spending reaches this % of budget</small>
+                </div>
+                <div class="col-md-6">
+                    <label for="savings_rate" class="form-label fw-semibold">
+                        Target Savings Rate
+                    </label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" id="savings_rate" name="savings_rate"
+                               value="{{ current_user.preferred_savings_rate }}" min="0" max="100">
+                        <span class="input-group-text" style="border: 2px solid #e2e8f0; border-left: none;">%</span>
+                    </div>
+                    <small class="text-muted">Your target % of income to save each month</small>
+                </div>
+            </div>
+
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary py-2">
+                    <i class="fas fa-save me-2"></i> Save Settings
+                </button>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary py-2"
+                   style="border-radius: var(--radius-sm);">
+                    <i class="fas fa-arrow-left me-2"></i> Back to Dashboard
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Account Info (read-only) -->
+    <div class="card p-4">
+        <h6 class="fw-bold mb-3"><i class="fas fa-info-circle me-2 text-muted"></i> Account Info</h6>
+        <div class="row g-2">
+            <div class="col-sm-4"><small class="text-muted fw-semibold">Username</small></div>
+            <div class="col-sm-8"><small>{{ current_user.username }}</small></div>
+
+            <div class="col-sm-4"><small class="text-muted fw-semibold">Email</small></div>
+            <div class="col-sm-8"><small>{{ current_user.email }}</small></div>
+
+            <div class="col-sm-4"><small class="text-muted fw-semibold">Member Since</small></div>
+            <div class="col-sm-8"><small>{{ current_user.created_at.strftime('%B %d, %Y') if current_user.created_at else 'N/A' }}</small></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
