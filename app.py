@@ -398,6 +398,10 @@ def dashboard():
     has_budgets = any(b.limit_amount > 0 for b in Budget.query.filter_by(user_id=current_user.id).all())
     needs_onboarding = not has_expenses and not has_income and not has_budgets
 
+    # Auto-redirect first-time users to the onboarding wizard
+    if needs_onboarding and not request.args.get("skip_onboarding"):
+        return redirect(url_for("onboarding"))
+
     glance = {
         "days_left": days_left,
         "days_elapsed": days_elapsed,
@@ -567,6 +571,24 @@ def delete_expense(expense_id):
     db.session.delete(expense)
     db.session.commit()
     flash(f"Deleted: {sym}{display_amt:,.2f} {cur} for {category} - {description}", "info")
+    return redirect(url_for("dashboard"))
+
+
+@app.route("/delete-all-expenses", methods=["POST"])
+@login_required
+def delete_all_expenses():
+    count = Expense.query.filter_by(user_id=current_user.id).delete()
+    db.session.commit()
+    flash(f"All {count} expense(s) deleted.", "info")
+    return redirect(url_for("dashboard"))
+
+
+@app.route("/delete-all-incomes", methods=["POST"])
+@login_required
+def delete_all_incomes():
+    count = Income.query.filter_by(user_id=current_user.id).delete()
+    db.session.commit()
+    flash(f"All {count} income entry(ies) deleted.", "info")
     return redirect(url_for("dashboard"))
 
 

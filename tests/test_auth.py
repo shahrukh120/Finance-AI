@@ -80,6 +80,14 @@ def create_test_app():
     def onboarding():
         return "Onboarding"
 
+    @app.route("/delete-all-expenses", methods=["POST"])
+    def delete_all_expenses():
+        return "Delete All Expenses"
+
+    @app.route("/delete-all-incomes", methods=["POST"])
+    def delete_all_incomes():
+        return "Delete All Incomes"
+
     with app.app_context():
         _db.create_all()
 

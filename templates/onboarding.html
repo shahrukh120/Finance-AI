@@ -104,7 +104,7 @@
                     <i class="fas fa-arrow-down me-2"></i> Add Income
                 </button>
                 <hr style="border-color: var(--border);">
-                <button type="button" class="btn btn-outline-primary w-100" onclick="finishOnboarding('{{ url_for('dashboard') }}')">
+                <button type="button" class="btn btn-outline-primary w-100" onclick="finishOnboarding('{{ url_for('dashboard', skip_onboarding=1) }}')">
                     Skip for now <i class="fas fa-arrow-right ms-1"></i>
                 </button>
             </div>

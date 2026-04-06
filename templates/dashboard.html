@@ -504,9 +504,17 @@
             <div class="section-title mb-0">
                 <i class="fas fa-arrow-down" style="color: var(--success);"></i> Recent Inflows
             </div>
-            <a href="{{ url_for('add_income') }}" class="btn btn-sm" style="background: var(--success); color: white;">
-                <i class="fas fa-plus me-1"></i> Add Income
-            </a>
+            <div class="d-flex gap-2">
+                <form method="POST" action="{{ url_for('delete_all_incomes') }}"
+                      onsubmit="return confirm('Delete ALL income entries? This cannot be undone.');">
+                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                        <i class="fas fa-trash-alt me-1"></i> Reset All
+                    </button>
+                </form>
+                <a href="{{ url_for('add_income') }}" class="btn btn-sm" style="background: var(--success); color: white;">
+                    <i class="fas fa-plus me-1"></i> Add Income
+                </a>
+            </div>
         </div>
         <div class="table-responsive">
             <table class="table table-sm mb-0">
@@ -584,6 +592,12 @@
                 <a href="{{ url_for('export_pdf') }}" class="btn btn-outline-danger btn-sm" title="Download Report PDF">
                     <i class="fas fa-file-pdf me-1"></i> Report
                 </a>
+                <form method="POST" action="{{ url_for('delete_all_expenses') }}"
+                      onsubmit="return confirm('Delete ALL expenses? This cannot be undone.');" style="display:inline;">
+                    <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete all expenses">
+                        <i class="fas fa-trash-alt me-1"></i> Reset All
+                    </button>
+                </form>
                 <a href="{{ url_for('add_expense') }}" class="btn btn-primary btn-sm">
                     <i class="fas fa-plus me-1"></i> Add New
                 </a>
