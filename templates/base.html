@@ -13,6 +13,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <!-- Restore theme before paint -->
+    <script>
+        (function() {
+            const t = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-bs-theme', t);
+        })();
+    </script>
     {% block head %}{% endblock %}
 </head>
 <body>
@@ -27,9 +35,14 @@
                 <span class="fw-bold">FinanceAI</span>
             </a>
 
-            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
+            <div class="d-flex align-items-center gap-2 d-lg-none">
+                <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode">
+                    <i class="fas fa-moon" id="theme-icon-mobile"></i>
+                </button>
+                <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+            </div>
 
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto align-items-center gap-1">
@@ -58,13 +71,24 @@
                         </ul>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'goals_page' %}active{% endif %}"
+                           href="{{ url_for('goals_page') }}">
+                            <i class="fas fa-bullseye me-1"></i> Goals
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'analysis' %}active{% endif %}"
                            href="{{ url_for('analysis') }}">
                             <i class="fas fa-robot me-1"></i> AI Analysis
                         </a>
                     </li>
                     {% if current_user.is_authenticated %}
-                    <li class="nav-item ms-2">
+                    <li class="nav-item ms-2 d-none d-lg-block">
+                        <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode">
+                            <i class="fas fa-moon" id="theme-icon-desktop"></i>
+                        </button>
+                    </li>
+                    <li class="nav-item ms-1">
                         <a class="nav-link p-0" href="{{ url_for('settings') }}" title="Settings">
                             <span class="badge bg-gradient-primary px-3 py-2 rounded-pill">
                                 <i class="fas fa-user me-1"></i> {{ current_user.name }}
@@ -122,10 +146,59 @@
         </small>
     </footer>
 
+    <!-- Mobile Bottom Nav -->
+    {% if current_user.is_authenticated %}
+    <nav class="mobile-nav">
+        <div class="mobile-nav-items">
+            <a href="{{ url_for('dashboard') }}" class="mobile-nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
+                <i class="fas fa-chart-pie"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="{{ url_for('goals_page') }}" class="mobile-nav-item {% if request.endpoint == 'goals_page' %}active{% endif %}">
+                <i class="fas fa-bullseye"></i>
+                <span>Goals</span>
+            </a>
+            <a href="{{ url_for('add_expense') }}" class="mobile-nav-item add-btn">
+                <i class="fas fa-plus"></i>
+            </a>
+            <a href="{{ url_for('analysis') }}" class="mobile-nav-item {% if request.endpoint == 'analysis' %}active{% endif %}">
+                <i class="fas fa-robot"></i>
+                <span>AI</span>
+            </a>
+            <a href="{{ url_for('settings') }}" class="mobile-nav-item {% if request.endpoint == 'settings' %}active{% endif %}">
+                <i class="fas fa-cog"></i>
+                <span>Settings</span>
+            </a>
+        </div>
+    </nav>
+    {% endif %}
+
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <!-- Theme toggle -->
+    <script>
+        function toggleTheme() {
+            const html = document.documentElement;
+            const current = html.getAttribute('data-bs-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-bs-theme', next);
+            localStorage.setItem('theme', next);
+            updateThemeIcons(next);
+        }
+
+        function updateThemeIcons(theme) {
+            const icons = document.querySelectorAll('#theme-icon-desktop, #theme-icon-mobile');
+            icons.forEach(icon => {
+                icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+            });
+        }
+
+        // Set correct icon on load
+        updateThemeIcons(document.documentElement.getAttribute('data-bs-theme'));
+    </script>
 
     {% block scripts %}{% endblock %}
 </body>

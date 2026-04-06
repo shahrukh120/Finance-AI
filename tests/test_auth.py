@@ -72,6 +72,14 @@ def create_test_app():
     def settings():
         return "Settings"
 
+    @app.route("/goals")
+    def goals_page():
+        return "Goals"
+
+    @app.route("/onboarding")
+    def onboarding():
+        return "Onboarding"
+
     with app.app_context():
         _db.create_all()
 

@@ -3,17 +3,100 @@
 
 {% block content %}
 
-<!-- Budget Alerts -->
-{% if alerts %}
-<div class="mb-4">
-    {% for alert in alerts %}
-    <div class="alert-finance {{ alert.severity }} d-flex align-items-center mb-2">
-        <i class="fas {% if alert.severity == 'critical' %}fa-exclamation-triangle{% else %}fa-exclamation-circle{% endif %} me-2 fs-5"></i>
-        <span>{{ alert.message }}</span>
+<!-- Onboarding Banner (only for brand-new users) -->
+{% if needs_onboarding %}
+<div class="card p-4 mb-4" style="border-left: 3px solid var(--brand);">
+    <div class="d-flex align-items-center gap-3">
+        <div style="width:48px; height:48px; border-radius:12px; background:var(--brand); display:flex; align-items:center; justify-content:center; color:#fff; font-size:1.3rem;">
+            <i class="fas fa-hand-wave"></i>
+        </div>
+        <div class="flex-grow-1">
+            <h6 class="fw-bold mb-1">Welcome to FinanceAI!</h6>
+            <p class="mb-0 text-muted" style="font-size:.85rem;">
+                Get started by setting up your income, budgets, and first transaction.
+            </p>
+        </div>
+        <a href="{{ url_for('onboarding') }}" class="btn btn-primary btn-sm">
+            <i class="fas fa-rocket me-1"></i> Get Started
+        </a>
     </div>
-    {% endfor %}
 </div>
 {% endif %}
+
+<!-- Budget Alerts (Collapsible) -->
+{% if alerts %}
+<div class="mb-4">
+    {% if alerts | length == 1 %}
+    <div class="alert-finance {{ alerts[0].severity }} d-flex align-items-center">
+        <i class="fas {% if alerts[0].severity == 'critical' %}fa-exclamation-triangle{% else %}fa-exclamation-circle{% endif %} me-2"></i>
+        <span>{{ alerts[0].message }}</span>
+    </div>
+    {% else %}
+    <div class="alert-finance {{ alerts[0].severity }} alert-collapsed" onclick="this.classList.toggle('expanded'); document.getElementById('alert-details').classList.toggle('d-none');">
+        <div class="d-flex align-items-center justify-content-between">
+            <div>
+                <i class="fas fa-exclamation-circle me-2"></i>
+                <strong>{{ alerts | length }} budget alerts</strong>
+                <span class="text-muted ms-2" style="font-size:.8rem;">
+                    — {{ alerts | selectattr('severity', 'equalto', 'critical') | list | length }} critical,
+                    {{ alerts | selectattr('severity', 'equalto', 'warning') | list | length }} warnings
+                </span>
+            </div>
+            <i class="fas fa-chevron-down alert-expand-icon" style="font-size:.75rem;"></i>
+        </div>
+    </div>
+    <div id="alert-details" class="d-none mt-2">
+        {% for alert in alerts %}
+        <div class="alert-finance {{ alert.severity }} d-flex align-items-center mb-1" style="font-size:.82rem; padding:.65rem 1rem;">
+            <i class="fas {% if alert.severity == 'critical' %}fa-exclamation-triangle{% else %}fa-exclamation-circle{% endif %} me-2" style="font-size:.75rem;"></i>
+            <span>{{ alert.message }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- At a Glance -->
+<div class="glance-card p-3 mb-4">
+    <div class="row align-items-center g-0">
+        <div class="col-auto pe-3" style="border-right: 1px solid var(--border);">
+            <div class="px-2">
+                <div style="font-size:.7rem; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:.3px;">
+                    {{ glance.month_label }}
+                </div>
+                <div style="font-size:1.8rem; font-weight:700; color:var(--text-primary); line-height:1.2;">
+                    {{ glance.days_left }}
+                </div>
+                <div style="font-size:.7rem; color:var(--text-muted);">days left</div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="row g-0">
+                <div class="col glance-stat" style="border-right: 1px solid var(--border);">
+                    <div class="glance-label">Inflow</div>
+                    <div class="glance-value" style="color: var(--success);">${{ "{:,.0f}".format(income) }}</div>
+                </div>
+                <div class="col glance-stat" style="border-right: 1px solid var(--border);">
+                    <div class="glance-label">Spent</div>
+                    <div class="glance-value" style="color: var(--warning);">${{ "{:,.0f}".format(total_spent) }}</div>
+                </div>
+                <div class="col glance-stat" style="border-right: 1px solid var(--border);">
+                    <div class="glance-label">Projected</div>
+                    <div class="glance-value" style="color: {% if glance.projected_surplus >= 0 %}var(--success){% else %}var(--danger){% endif %};">
+                        ${{ "{:,.0f}".format(glance.projected_spending) }}
+                    </div>
+                </div>
+                <div class="col glance-stat">
+                    <div class="glance-label">Surplus / Deficit</div>
+                    <div class="glance-value" style="color: {% if glance.projected_surplus >= 0 %}var(--success){% else %}var(--danger){% endif %};">
+                        {% if glance.projected_surplus >= 0 %}+{% endif %}${{ "{:,.0f}".format(glance.projected_surplus) }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Summary Row -->
 <div class="row g-3 mb-4">
@@ -29,15 +112,15 @@
             {% if income_breakdown.sources %}
             <div class="mt-1">
                 {% for src in income_breakdown.sources[:3] %}
-                <small class="d-block text-muted" style="font-size:.68rem;">
+                <small class="d-block" style="font-size:.68rem; color: var(--text-muted);">
                     <i class="fas {{ src.icon }} me-1" style="color: {{ src.color }};"></i>
                     {{ src.label }}: ${{ "{:,.0f}".format(src.amount) }}
                 </small>
                 {% endfor %}
             </div>
-            {% elif income == 0 and expected_income > 0 %}
+            {% elif income == 0 %}
             <div class="mt-1">
-                <small class="text-muted" style="font-size:.68rem;">
+                <small style="font-size:.68rem; color: var(--text-muted);">
                     <i class="fas fa-info-circle me-1"></i>
                     No inflows logged yet.
                     <a href="{{ url_for('add_income') }}" style="font-size:.68rem;">Add income</a>
@@ -134,35 +217,57 @@
     <!-- Financial Goals -->
     <div class="col-lg-4">
         <div class="card p-4 h-100">
-            <div class="section-title">
-                <i class="fas fa-bullseye"></i> Financial Goals
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="section-title mb-0">
+                    <i class="fas fa-bullseye"></i> Financial Goals
+                </div>
+                <a href="{{ url_for('goals_page') }}" class="btn btn-outline-primary btn-sm" style="font-size:.75rem;">
+                    View All
+                </a>
             </div>
-            {% for goal in goals %}
-            <div class="{% if not loop.last %}mb-4{% endif %}">
-                <div class="d-flex justify-content-between align-items-start mb-1">
-                    <div>
-                        <div class="fw-bold" style="font-size:.9rem;">{{ goal.name }}</div>
-                        <small class="text-muted">Target: {{ goal.target_date }}</small>
+            <div class="mt-3">
+            {% if goals %}
+                {% for goal in goals[:3] %}
+                <div class="{% if not loop.last %}mb-4{% endif %}">
+                    <div class="d-flex justify-content-between align-items-start mb-1">
+                        <div>
+                            <div class="fw-bold" style="font-size:.9rem;">{{ goal.name }}</div>
+                            <small class="text-muted">Target: {{ goal.target_date }}</small>
+                        </div>
+                        <span class="fw-bold" style="color: var(--brand); font-size:.85rem;">
+                            {{ "{:.0f}".format(goal.percentage) }}%
+                        </span>
                     </div>
-                    <span class="fw-bold" style="color: var(--primary); font-size:.85rem;">
-                        {{ "{:.0f}".format(goal.percentage) }}%
-                    </span>
+                    <div class="goal-progress mb-1">
+                        <div class="goal-progress-bar" style="width: {{ goal.percentage }}%;"></div>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <small class="text-muted">${{ "{:,.0f}".format(goal.current_amount) }}</small>
+                        <small class="text-muted">${{ "{:,.0f}".format(goal.target_amount) }}</small>
+                    </div>
                 </div>
-                <div class="goal-progress mb-1">
-                    <div class="goal-progress-bar" style="width: {{ goal.percentage }}%;"></div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state py-3">
+                    <div class="empty-state-icon">
+                        <i class="fas fa-bullseye"></i>
+                    </div>
+                    <h6>No goals yet</h6>
+                    <p>Set a savings target to track your progress.</p>
+                    <a href="{{ url_for('goals_page') }}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-plus me-1"></i> Add Goal
+                    </a>
                 </div>
-                <div class="d-flex justify-content-between">
-                    <small class="text-muted">${{ "{:,.0f}".format(goal.current_amount) }}</small>
-                    <small class="text-muted">${{ "{:,.0f}".format(goal.target_amount) }}</small>
-                </div>
+            {% endif %}
             </div>
-            {% endfor %}
 
+            {% if goals %}
             <div class="mt-auto pt-3">
                 <a href="{{ url_for('analysis') }}" class="btn btn-primary w-100 btn-sm">
                     <i class="fas fa-robot me-1"></i> Get AI Advice
                 </a>
             </div>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -172,7 +277,7 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div class="section-title mb-0">
             <i class="fas fa-calendar-alt"></i> Spending Trend
-            <span class="text-muted fw-normal ms-2" style="font-size:.85rem;">{{ trend_data.view_label }}</span>
+            <span class="fw-normal ms-2" style="font-size:.82rem; color: var(--text-muted);">{{ trend_data.view_label }}</span>
         </div>
         <div class="btn-group btn-group-sm" role="group">
             <a href="{{ url_for('dashboard', view='weekly') }}"
@@ -189,27 +294,27 @@
     <!-- View Summary Cards -->
     <div class="row g-3 mb-3">
         <div class="col-md-4">
-            <div class="bg-light rounded-3 p-3 text-center">
-                <div class="text-muted" style="font-size:.75rem; font-weight:600; text-transform:uppercase; letter-spacing:.5px;">
+            <div class="rounded-3 p-3 text-center" style="background: var(--bg-muted);">
+                <div style="font-size:.72rem; font-weight:600; text-transform:uppercase; letter-spacing:.4px; color: var(--text-muted);">
                     {{ 'Weekly' if view_mode == 'weekly' else 'Monthly' }} Total
                 </div>
-                <div class="fw-bold fs-4" style="color: var(--primary);">${{ "{:,.2f}".format(trend_data.view_total) }}</div>
+                <div class="fw-bold fs-4" style="color: var(--brand);">${{ "{:,.2f}".format(trend_data.view_total) }}</div>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="bg-light rounded-3 p-3 text-center">
-                <div class="text-muted" style="font-size:.75rem; font-weight:600; text-transform:uppercase; letter-spacing:.5px;">
+            <div class="rounded-3 p-3 text-center" style="background: var(--bg-muted);">
+                <div style="font-size:.72rem; font-weight:600; text-transform:uppercase; letter-spacing:.4px; color: var(--text-muted);">
                     Daily Average
                 </div>
-                <div class="fw-bold fs-4" style="color: #10b981;">${{ "{:,.2f}".format(trend_data.view_avg_daily) }}</div>
+                <div class="fw-bold fs-4" style="color: var(--success);">${{ "{:,.2f}".format(trend_data.view_avg_daily) }}</div>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="bg-light rounded-3 p-3 text-center">
-                <div class="text-muted" style="font-size:.75rem; font-weight:600; text-transform:uppercase; letter-spacing:.5px;">
+            <div class="rounded-3 p-3 text-center" style="background: var(--bg-muted);">
+                <div style="font-size:.72rem; font-weight:600; text-transform:uppercase; letter-spacing:.4px; color: var(--text-muted);">
                     Transactions
                 </div>
-                <div class="fw-bold fs-4" style="color: #3b82f6;">{{ trend_data.view_tx_count }}</div>
+                <div class="fw-bold fs-4" style="color: var(--info);">{{ trend_data.view_tx_count }}</div>
             </div>
         </div>
     </div>
@@ -230,7 +335,7 @@
     <div class="row g-3 mb-4">
         {% for fi in forecast_data.forecast_items %}
         <div class="col-md-4 col-lg">
-            <div class="rounded-3 p-3" style="border: 1px solid #e2e8f0; border-left: 4px solid {{ fi.color }};">
+            <div class="rounded-3 p-3" style="border: 1px solid var(--border); border-left: 3px solid {{ fi.color }}; background: var(--bg-card);">
                 <div class="d-flex align-items-center gap-2 mb-2">
                     <div class="stat-icon" style="background: {{ fi.color }}; width:28px; height:28px; border-radius:6px;">
                         <i class="fas {{ fi.icon }}" style="font-size:.7rem;"></i>
@@ -242,23 +347,23 @@
                 </div>
                 <div class="d-flex justify-content-between align-items-end mb-1">
                     <div>
-                        <div class="text-muted" style="font-size:.65rem; text-transform:uppercase; letter-spacing:.5px;">Projected</div>
-                        <div class="fw-bold" style="font-size:1.05rem; color: {% if fi.forecast == 'WILL_EXCEED_BUDGET' %}#ef4444{% elif fi.forecast == 'AT_RISK' %}#f59e0b{% else %}#10b981{% endif %};">
+                        <div style="font-size:.65rem; text-transform:uppercase; letter-spacing:.4px; color: var(--text-muted);">Projected</div>
+                        <div class="fw-bold" style="font-size:1.05rem; color: {% if fi.forecast == 'WILL_EXCEED_BUDGET' %}var(--danger){% elif fi.forecast == 'AT_RISK' %}var(--warning){% else %}var(--success){% endif %};">
                             ${{ "{:,.2f}".format(fi.projected_month_end_total) }}
                         </div>
                     </div>
                     <div class="text-end">
-                        <div class="text-muted" style="font-size:.65rem; text-transform:uppercase; letter-spacing:.5px;">Budget</div>
+                        <div style="font-size:.65rem; text-transform:uppercase; letter-spacing:.4px; color: var(--text-muted);">Budget</div>
                         <div style="font-size:.9rem;">${{ "{:,.0f}".format(fi.budget_limit) }}</div>
                     </div>
                 </div>
-                <div class="d-flex justify-content-between" style="font-size:.72rem; color: #64748b;">
+                <div class="d-flex justify-content-between" style="font-size:.72rem; color: var(--text-muted);">
                     <span>${{ "{:,.2f}".format(fi.daily_burn_rate) }}/day</span>
                     {% if fi.rolling_avg_3m is not none %}
                     <span>
-                        {% if fi.trend == 'INCREASING' %}<i class="fas fa-arrow-up text-danger"></i>
-                        {% elif fi.trend == 'DECREASING' %}<i class="fas fa-arrow-down text-success"></i>
-                        {% elif fi.trend == 'STABLE' %}<i class="fas fa-minus text-muted"></i>
+                        {% if fi.trend == 'INCREASING' %}<i class="fas fa-arrow-up" style="color:var(--danger);"></i>
+                        {% elif fi.trend == 'DECREASING' %}<i class="fas fa-arrow-down" style="color:var(--success);"></i>
+                        {% elif fi.trend == 'STABLE' %}<i class="fas fa-minus" style="color:var(--text-muted);"></i>
                         {% endif %}
                         3mo avg: ${{ "{:,.0f}".format(fi.rolling_avg_3m) }}
                     </span>
@@ -271,19 +376,16 @@
 
     <!-- Two charts side by side -->
     <div class="row g-4">
-        <!-- Forecast Bar Chart with projected overlay -->
         <div class="col-lg-6">
-            <h6 class="fw-bold mb-3" style="font-size:.85rem; color:#64748b;">
+            <h6 class="fw-bold mb-3" style="font-size:.85rem; color: var(--text-muted);">
                 <i class="fas fa-bullseye me-1"></i> Current vs Projected vs Budget
             </h6>
             <div style="position: relative; height: 280px;">
                 <canvas id="forecastChart"></canvas>
             </div>
         </div>
-
-        <!-- Monthly Rolling Average Trend -->
         <div class="col-lg-6">
-            <h6 class="fw-bold mb-3" style="font-size:.85rem; color:#64748b;">
+            <h6 class="fw-bold mb-3" style="font-size:.85rem; color: var(--text-muted);">
                 <i class="fas fa-wave-square me-1"></i> Monthly Spending Trend (3-Month Rolling Avg)
             </h6>
             <div style="position: relative; height: 280px;">
@@ -295,7 +397,6 @@
 
 <!-- Committed vs Discretionary Spend -->
 <div class="row g-4 mb-4">
-    <!-- Breakdown Chart -->
     <div class="col-lg-5">
         <div class="card p-4 h-100">
             <div class="section-title">
@@ -303,21 +404,21 @@
             </div>
             <div class="row g-3 mb-3">
                 <div class="col-6">
-                    <div class="rounded-3 p-3 text-center" style="background: rgba(239,68,68,.08);">
-                        <div class="text-muted" style="font-size:.7rem; font-weight:600; text-transform:uppercase; letter-spacing:.5px;">
+                    <div class="rounded-3 p-3 text-center" style="background: var(--danger-muted);">
+                        <div style="font-size:.7rem; font-weight:600; text-transform:uppercase; letter-spacing:.4px; color: var(--text-muted);">
                             Committed
                         </div>
-                        <div class="fw-bold fs-5" style="color: #ef4444;">${{ "{:,.2f}".format(committed_data.committed_total) }}</div>
-                        <div style="font-size:.75rem; color:#64748b;">{{ committed_data.committed_pct }}% of income</div>
+                        <div class="fw-bold fs-5" style="color: var(--danger);">${{ "{:,.2f}".format(committed_data.committed_total) }}</div>
+                        <div style="font-size:.75rem; color: var(--text-muted);">{{ committed_data.committed_pct }}% of income</div>
                     </div>
                 </div>
                 <div class="col-6">
-                    <div class="rounded-3 p-3 text-center" style="background: rgba(16,185,129,.08);">
-                        <div class="text-muted" style="font-size:.7rem; font-weight:600; text-transform:uppercase; letter-spacing:.5px;">
+                    <div class="rounded-3 p-3 text-center" style="background: var(--success-muted);">
+                        <div style="font-size:.7rem; font-weight:600; text-transform:uppercase; letter-spacing:.4px; color: var(--text-muted);">
                             Discretionary
                         </div>
-                        <div class="fw-bold fs-5" style="color: #10b981;">${{ "{:,.2f}".format(committed_data.discretionary_total) }}</div>
-                        <div style="font-size:.75rem; color:#64748b;">{{ committed_data.discretionary_pct }}% of income</div>
+                        <div class="fw-bold fs-5" style="color: var(--success);">${{ "{:,.2f}".format(committed_data.discretionary_total) }}</div>
+                        <div style="font-size:.75rem; color: var(--text-muted);">{{ committed_data.discretionary_pct }}% of income</div>
                     </div>
                 </div>
             </div>
@@ -327,7 +428,6 @@
         </div>
     </div>
 
-    <!-- Recurring Items Table -->
     <div class="col-lg-7">
         <div class="card p-4 h-100">
             <div class="d-flex justify-content-between align-items-center mb-3">
@@ -353,7 +453,7 @@
                         <tr>
                             <td>
                                 <div class="d-flex align-items-center gap-2">
-                                    <i class="fas fa-sync-alt text-muted" style="font-size:.7rem;"></i>
+                                    <i class="fas fa-sync-alt" style="font-size:.7rem; color:var(--text-muted);"></i>
                                     <span style="font-size:.85rem;">{{ item.description }}</span>
                                 </div>
                             </td>
@@ -369,25 +469,27 @@
                                 </span>
                             </td>
                             <td class="text-center">
-                                <span class="text-muted" style="font-size:.85rem;">{{ item.occurrences }}x</span>
+                                <span style="font-size:.85rem; color:var(--text-muted);">{{ item.occurrences }}x</span>
                             </td>
                         </tr>
                         {% endfor %}
                     </tbody>
                     <tfoot>
-                        <tr style="border-top: 2px solid #e2e8f0;">
+                        <tr style="border-top: 2px solid var(--border);">
                             <td colspan="2" class="fw-bold" style="font-size:.85rem;">Total Committed</td>
-                            <td class="text-end amount-cell fw-bold" style="color: #ef4444;">${{ "{:,.2f}".format(committed_data.committed_total) }}/mo</td>
+                            <td class="text-end amount-cell fw-bold" style="color: var(--danger);">${{ "{:,.2f}".format(committed_data.committed_total) }}/mo</td>
                             <td colspan="2"></td>
                         </tr>
                     </tfoot>
                 </table>
             </div>
             {% else %}
-            <div class="text-center text-muted py-4">
-                <i class="fas fa-search fa-2x mb-2 d-block" style="opacity:.3;"></i>
-                <p style="font-size:.9rem;">No recurring charges detected yet.<br>
-                <small>Add more transactions across months to enable detection.</small></p>
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="fas fa-search"></i>
+                </div>
+                <h6>No recurring charges detected</h6>
+                <p>Add more transactions across months to enable detection.</p>
             </div>
             {% endif %}
         </div>
@@ -400,9 +502,9 @@
     <div class="card-body p-4">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div class="section-title mb-0">
-                <i class="fas fa-arrow-down" style="color: #10b981;"></i> Recent Inflows
+                <i class="fas fa-arrow-down" style="color: var(--success);"></i> Recent Inflows
             </div>
-            <a href="{{ url_for('add_income') }}" class="btn btn-sm" style="background: #10b981; color: white;">
+            <a href="{{ url_for('add_income') }}" class="btn btn-sm" style="background: var(--success); color: white;">
                 <i class="fas fa-plus me-1"></i> Add Income
             </a>
         </div>
@@ -420,7 +522,7 @@
                 <tbody>
                     {% for inc in recent_incomes %}
                     <tr>
-                        <td><span class="text-muted" style="font-size:.85rem;">{{ inc.date }}</span></td>
+                        <td><span style="font-size:.85rem; color:var(--text-muted);">{{ inc.date }}</span></td>
                         <td>
                             <span class="badge" style="background: {{ inc.source_color }}22; color: {{ inc.source_color }}; font-size:.72rem;">
                                 <i class="fas {{ inc.source_icon }} me-1" style="font-size:.6rem;"></i>
@@ -428,12 +530,12 @@
                             </span>
                         </td>
                         <td style="font-size:.85rem;">{{ inc.description }}</td>
-                        <td class="text-end" style="font-size:.9rem; font-weight: 600; color: #10b981;">
+                        <td class="text-end" style="font-size:.9rem; font-weight: 600; color: var(--success);">
                             {{ inc.display_symbol }}{{ "{:,.2f}".format(inc.display_amount) }}
-                            <span class="text-muted" style="font-size:.7rem;">{{ inc.display_currency }}</span>
+                            <span style="font-size:.7rem; color:var(--text-muted);">{{ inc.display_currency }}</span>
                             {% if inc.is_foreign %}
-                            <br><small class="text-muted" style="font-size:.65rem;">
-                                ≈ ${{ "{:,.2f}".format(inc.amount_usd) }} USD
+                            <br><small style="font-size:.65rem; color:var(--text-muted);">
+                                &#8776; ${{ "{:,.2f}".format(inc.amount_usd) }} USD
                             </small>
                             {% endif %}
                         </td>
@@ -455,17 +557,13 @@
 </div>
 {% else %}
 <div class="card p-4 mb-4">
-    <div class="d-flex justify-content-between align-items-center">
-        <div>
-            <div class="section-title mb-1">
-                <i class="fas fa-arrow-down" style="color: #10b981;"></i> Money Inflows
-            </div>
-            <p class="text-muted mb-0" style="font-size:.85rem;">
-                No income logged yet. Add your salary, freelance earnings, or any other money received
-                so your dashboard reflects real inflows.
-            </p>
+    <div class="empty-state py-3">
+        <div class="empty-state-icon" style="background: var(--success-muted);">
+            <i class="fas fa-arrow-down" style="color: var(--success);"></i>
         </div>
-        <a href="{{ url_for('add_income') }}" class="btn btn-sm ms-3" style="background: #10b981; color: white; white-space: nowrap;">
+        <h6>No income logged yet</h6>
+        <p>Track your salary, freelance earnings, or any money received to see real inflows on your dashboard.</p>
+        <a href="{{ url_for('add_income') }}" class="btn btn-sm" style="background: var(--success); color: white;">
             <i class="fas fa-plus me-1"></i> Add Income
         </a>
     </div>
@@ -491,8 +589,21 @@
                 </a>
             </div>
         </div>
+
+        <!-- Search / Filter Bar -->
+        <div class="filter-bar">
+            <input type="text" class="form-control" id="txSearch" placeholder="Search transactions..." oninput="filterTransactions()">
+            <select class="form-select" id="txCategoryFilter" onchange="filterTransactions()">
+                <option value="">All Categories</option>
+                {% for cat in category_colors %}
+                <option value="{{ cat }}">{{ cat | title }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        {% if recent %}
         <div class="table-responsive">
-            <table class="table">
+            <table class="table" id="txTable">
                 <thead>
                     <tr>
                         <th>Date</th>
@@ -504,23 +615,22 @@
                 </thead>
                 <tbody>
                     {% for exp in recent %}
-                    <tr>
+                    <tr data-category="{{ exp.category }}" data-desc="{{ exp.description | lower }}">
                         <td>
-                            <span class="text-muted" style="font-size:.85rem;">{{ exp.date }}</span>
+                            <span style="font-size:.85rem; color:var(--text-muted);">{{ exp.date }}</span>
                         </td>
                         <td>
                             <span class="category-badge bg-{{ category_colors[exp.category].badge }}">
-                                <i class="fas {{ category_colors[exp.category] | default({'badge':'secondary'}) }} me-1" style="font-size:.65rem;"></i>
                                 {{ exp.category | title }}
                             </span>
                         </td>
                         <td>{{ exp.description }}</td>
                         <td class="text-end amount-cell">
                             {{ exp.display_symbol }}{{ "{:,.2f}".format(exp.display_amount) }}
-                            <span class="text-muted" style="font-size:.7rem;">{{ exp.display_currency }}</span>
+                            <span style="font-size:.7rem; color:var(--text-muted);">{{ exp.display_currency }}</span>
                             {% if exp.is_foreign %}
-                            <br><small class="text-muted" style="font-size:.68rem;">
-                                ≈ ${{ "{:,.2f}".format(exp.amount_usd) }} USD
+                            <br><small style="font-size:.68rem; color:var(--text-muted);">
+                                &#8776; ${{ "{:,.2f}".format(exp.amount_usd) }} USD
                             </small>
                             {% endif %}
                         </td>
@@ -538,6 +648,18 @@
                 </tbody>
             </table>
         </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">
+                <i class="fas fa-receipt"></i>
+            </div>
+            <h6>No transactions yet</h6>
+            <p>Start tracking your spending by adding your first expense.</p>
+            <a href="{{ url_for('add_expense') }}" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus me-1"></i> Add Expense
+            </a>
+        </div>
+        {% endif %}
     </div>
 </div>
 
@@ -545,6 +667,26 @@
 
 {% block scripts %}
 <script>
+    // ─── Transaction Filter ─────────────────────────────────────────
+    function filterTransactions() {
+        const search = document.getElementById('txSearch').value.toLowerCase();
+        const category = document.getElementById('txCategoryFilter').value;
+        const rows = document.querySelectorAll('#txTable tbody tr');
+
+        rows.forEach(row => {
+            const desc = row.getAttribute('data-desc') || '';
+            const cat = row.getAttribute('data-category') || '';
+            const matchSearch = !search || desc.includes(search) || cat.includes(search);
+            const matchCategory = !category || cat === category;
+            row.style.display = (matchSearch && matchCategory) ? '' : 'none';
+        });
+    }
+
+    // ─── Chart theme awareness ──────────────────────────────────────
+    const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+    const gridColor = isDark ? '#2d3143' : '#f1f5f9';
+    const textColor = isDark ? '#9ca3b4' : undefined;
+
     const chartData = {{ chart_data | tojson }};
 
     let currentChart = null;
@@ -581,7 +723,7 @@
                 ] : [{
                     data: chartData.values,
                     backgroundColor: chartData.colors.map(c => c + 'cc'),
-                    borderColor: '#fff',
+                    borderColor: isDark ? '#1a1d27' : '#fff',
                     borderWidth: 3,
                     hoverOffset: 10,
                 }]
@@ -595,7 +737,8 @@
                         labels: {
                             usePointStyle: true,
                             padding: 16,
-                            font: { family: 'Inter', size: 12 }
+                            font: { family: 'Inter', size: 12 },
+                            color: textColor,
                         }
                     },
                     tooltip: {
@@ -614,13 +757,14 @@
                             beginAtZero: true,
                             ticks: {
                                 callback: v => '$' + v,
-                                font: { family: 'Inter' }
+                                font: { family: 'Inter' },
+                                color: textColor,
                             },
-                            grid: { color: '#f1f5f9' }
+                            grid: { color: gridColor }
                         },
                         x: {
                             grid: { display: false },
-                            ticks: { font: { family: 'Inter' } }
+                            ticks: { font: { family: 'Inter' }, color: textColor }
                         }
                     }
                 } : {})
@@ -654,10 +798,10 @@
                 ],
                 backgroundColor: [
                     '#ef4444cc',
-                    '#10b981cc',
-                    '#e2e8f0',
+                    '#22c55ecc',
+                    isDark ? '#2d3143' : '#e2e8f0',
                 ],
-                borderColor: '#fff',
+                borderColor: isDark ? '#1a1d27' : '#fff',
                 borderWidth: 3,
                 hoverOffset: 8,
             }]
@@ -674,13 +818,14 @@
                         padding: 12,
                         font: { family: 'Inter', size: 11 },
                         boxWidth: 8,
+                        color: textColor,
                     }
                 },
                 tooltip: {
                     callbacks: {
                         label: function(context) {
                             const val = context.parsed;
-                            const pct = (val / {{ income }} * 100).toFixed(1);
+                            const pct = (val / {{ income if income > 0 else 1 }} * 100).toFixed(1);
                             return context.label + ': $' + val.toFixed(2) + ' (' + pct + '%)';
                         }
                     }
@@ -694,7 +839,6 @@
 
     const trendCtx = document.getElementById('trendChart').getContext('2d');
 
-    // Build stacked bar datasets for each category
     const categoryDatasets = trendData.category_datasets.map(ds => ({
         label: ds.label,
         data: ds.data,
@@ -706,7 +850,6 @@
         categoryPercentage: 0.8,
     }));
 
-    // Add a line dataset for running total trend
     const cumulativeValues = [];
     let runningTotal = 0;
     trendData.values.forEach(v => {
@@ -728,7 +871,7 @@
                     backgroundColor: 'rgba(99, 102, 241, 0.08)',
                     borderWidth: 2.5,
                     pointBackgroundColor: '#6366f1',
-                    pointBorderColor: '#fff',
+                    pointBorderColor: isDark ? '#1a1d27' : '#fff',
                     pointBorderWidth: 2,
                     pointRadius: 3,
                     pointHoverRadius: 5,
@@ -742,19 +885,11 @@
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            interaction: {
-                mode: 'index',
-                intersect: false,
-            },
+            interaction: { mode: 'index', intersect: false },
             plugins: {
                 legend: {
                     position: 'top',
-                    labels: {
-                        usePointStyle: true,
-                        padding: 12,
-                        font: { family: 'Inter', size: 11 },
-                        boxWidth: 8,
-                    }
+                    labels: { usePointStyle: true, padding: 12, font: { family: 'Inter', size: 11 }, boxWidth: 8, color: textColor }
                 },
                 tooltip: {
                     callbacks: {
@@ -765,40 +900,20 @@
                 }
             },
             scales: {
-                x: {
-                    grid: { display: false },
-                    ticks: {
-                        font: { family: 'Inter', size: 10 },
-                        maxRotation: 45,
-                    }
-                },
+                x: { grid: { display: false }, ticks: { font: { family: 'Inter', size: 10 }, maxRotation: 45, color: textColor } },
                 y: {
                     stacked: true,
                     beginAtZero: true,
                     position: 'left',
-                    title: {
-                        display: true,
-                        text: 'Daily ($)',
-                        font: { family: 'Inter', size: 11 },
-                    },
-                    ticks: {
-                        callback: v => '$' + v,
-                        font: { family: 'Inter', size: 10 }
-                    },
-                    grid: { color: '#f1f5f9' }
+                    title: { display: true, text: 'Daily ($)', font: { family: 'Inter', size: 11 }, color: textColor },
+                    ticks: { callback: v => '$' + v, font: { family: 'Inter', size: 10 }, color: textColor },
+                    grid: { color: gridColor }
                 },
                 y1: {
                     beginAtZero: true,
                     position: 'right',
-                    title: {
-                        display: true,
-                        text: 'Cumulative ($)',
-                        font: { family: 'Inter', size: 11 },
-                    },
-                    ticks: {
-                        callback: v => '$' + v,
-                        font: { family: 'Inter', size: 10 }
-                    },
+                    title: { display: true, text: 'Cumulative ($)', font: { family: 'Inter', size: 11 }, color: textColor },
+                    ticks: { callback: v => '$' + v, font: { family: 'Inter', size: 10 }, color: textColor },
                     grid: { drawOnChartArea: false },
                 }
             }
@@ -845,7 +960,7 @@
                     borderWidth: 2,
                     borderDash: [8, 4],
                     pointBackgroundColor: '#ef4444',
-                    pointBorderColor: '#fff',
+                    pointBorderColor: isDark ? '#1a1d27' : '#fff',
                     pointBorderWidth: 2,
                     pointRadius: 4,
                     fill: false,
@@ -857,36 +972,12 @@
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: {
-                    position: 'top',
-                    labels: {
-                        usePointStyle: true,
-                        padding: 10,
-                        font: { family: 'Inter', size: 10 },
-                        boxWidth: 8,
-                    }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(ctx) {
-                            return ctx.dataset.label + ': $' + ctx.parsed.y.toFixed(2);
-                        }
-                    }
-                }
+                legend: { position: 'top', labels: { usePointStyle: true, padding: 10, font: { family: 'Inter', size: 10 }, boxWidth: 8, color: textColor } },
+                tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': $' + ctx.parsed.y.toFixed(2) } }
             },
             scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: v => '$' + v,
-                        font: { family: 'Inter', size: 10 }
-                    },
-                    grid: { color: '#f1f5f9' }
-                },
-                x: {
-                    grid: { display: false },
-                    ticks: { font: { family: 'Inter', size: 10 } }
-                }
+                y: { beginAtZero: true, ticks: { callback: v => '$' + v, font: { family: 'Inter', size: 10 }, color: textColor }, grid: { color: gridColor } },
+                x: { grid: { display: false }, ticks: { font: { family: 'Inter', size: 10 }, color: textColor } }
             }
         }
     });
@@ -895,7 +986,6 @@
     const rollingCtx = document.getElementById('rollingAvgChart').getContext('2d');
     const monthLabels = forecastData.month_labels;
 
-    // Per-category rolling average lines
     const rollingDatasets = forecastData.category_datasets.map(ds => ({
         label: ds.label + ' (3mo avg)',
         data: ds.rolling_avg,
@@ -903,7 +993,7 @@
         backgroundColor: ds.color + '11',
         borderWidth: 2,
         pointBackgroundColor: ds.color,
-        pointBorderColor: '#fff',
+        pointBorderColor: isDark ? '#1a1d27' : '#fff',
         pointBorderWidth: 1.5,
         pointRadius: 3,
         pointHoverRadius: 5,
@@ -911,15 +1001,14 @@
         tension: 0.35,
     }));
 
-    // Overall rolling average (thicker, emphasized)
     rollingDatasets.push({
         label: 'Overall (3mo avg)',
         data: forecastData.overall_rolling_avg,
-        borderColor: '#1e293b',
-        backgroundColor: 'rgba(30, 41, 59, 0.06)',
+        borderColor: isDark ? '#e8eaf0' : '#1e293b',
+        backgroundColor: isDark ? 'rgba(232,234,240,0.06)' : 'rgba(30, 41, 59, 0.06)',
         borderWidth: 3,
-        pointBackgroundColor: '#1e293b',
-        pointBorderColor: '#fff',
+        pointBackgroundColor: isDark ? '#e8eaf0' : '#1e293b',
+        pointBorderColor: isDark ? '#1a1d27' : '#fff',
         pointBorderWidth: 2,
         pointRadius: 4,
         pointHoverRadius: 6,
@@ -929,57 +1018,23 @@
 
     new Chart(rollingCtx, {
         type: 'line',
-        data: {
-            labels: monthLabels,
-            datasets: rollingDatasets,
-        },
+        data: { labels: monthLabels, datasets: rollingDatasets },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            interaction: {
-                mode: 'index',
-                intersect: false,
-            },
+            interaction: { mode: 'index', intersect: false },
             plugins: {
-                legend: {
-                    position: 'top',
-                    labels: {
-                        usePointStyle: true,
-                        padding: 10,
-                        font: { family: 'Inter', size: 10 },
-                        boxWidth: 8,
-                    }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(ctx) {
-                            const val = ctx.parsed.y;
-                            return val !== null ? ctx.dataset.label + ': $' + val.toFixed(2) : '';
-                        }
-                    }
-                }
+                legend: { position: 'top', labels: { usePointStyle: true, padding: 10, font: { family: 'Inter', size: 10 }, boxWidth: 8, color: textColor } },
+                tooltip: { callbacks: { label: ctx => { const val = ctx.parsed.y; return val !== null ? ctx.dataset.label + ': $' + val.toFixed(2) : ''; } } }
             },
             scales: {
                 y: {
                     beginAtZero: true,
-                    title: {
-                        display: true,
-                        text: 'Monthly Spend ($)',
-                        font: { family: 'Inter', size: 11 },
-                    },
-                    ticks: {
-                        callback: v => '$' + v,
-                        font: { family: 'Inter', size: 10 }
-                    },
-                    grid: { color: '#f1f5f9' }
+                    title: { display: true, text: 'Monthly Spend ($)', font: { family: 'Inter', size: 11 }, color: textColor },
+                    ticks: { callback: v => '$' + v, font: { family: 'Inter', size: 10 }, color: textColor },
+                    grid: { color: gridColor }
                 },
-                x: {
-                    grid: { display: false },
-                    ticks: {
-                        font: { family: 'Inter', size: 10 },
-                        maxRotation: 45,
-                    }
-                }
+                x: { grid: { display: false }, ticks: { font: { family: 'Inter', size: 10 }, maxRotation: 45, color: textColor } }
             }
         }
     });

@@ -378,6 +378,35 @@ def dashboard():
         "category_datasets": history_datasets,
     }
 
+    # ─── At a Glance ─────────────────────────────────────────────────
+    import calendar
+    today = datetime.now().date()
+    days_in_month = calendar.monthrange(today.year, today.month)[1]
+    days_left = days_in_month - today.day
+    days_elapsed = today.day
+
+    # Projected month-end spending (linear extrapolation)
+    if days_elapsed > 0:
+        projected_spending = round(total_spent / days_elapsed * days_in_month, 2)
+    else:
+        projected_spending = 0
+    projected_surplus = round(income - projected_spending, 2) if income > 0 else round(-projected_spending, 2)
+
+    # Needs onboarding? (no income, no expenses, no budgets set up)
+    has_expenses = len(all_user_expenses) > 0
+    has_income = len(monthly_incomes) > 0
+    has_budgets = any(b.limit_amount > 0 for b in Budget.query.filter_by(user_id=current_user.id).all())
+    needs_onboarding = not has_expenses and not has_income and not has_budgets
+
+    glance = {
+        "days_left": days_left,
+        "days_elapsed": days_elapsed,
+        "days_in_month": days_in_month,
+        "projected_spending": projected_spending,
+        "projected_surplus": projected_surplus,
+        "month_label": today.strftime("%B"),
+    }
+
     return render_template(
         "dashboard.html",
         budget_statuses=budget_statuses,
@@ -398,6 +427,8 @@ def dashboard():
         recent_incomes=recent_incomes,
         income_breakdown=income_breakdown,
         income_sources=INCOME_SOURCES,
+        glance=glance,
+        needs_onboarding=needs_onboarding,
     )
 
 
@@ -633,6 +664,25 @@ def delete_income(income_id):
 @login_required
 def settings():
     if request.method == "POST":
+        # Handle budget category update (from onboarding or AJAX)
+        budget_category = request.form.get("budget_category")
+        if budget_category:
+            try:
+                budget_amount = round(float(request.form.get("budget_amount", "0")), 2)
+            except ValueError:
+                budget_amount = 0
+            existing = Budget.query.filter_by(user_id=current_user.id, category=budget_category).first()
+            if existing:
+                existing.limit_amount = budget_amount
+            else:
+                db.session.add(Budget(user_id=current_user.id, category=budget_category, limit_amount=budget_amount))
+            db.session.commit()
+            # If AJAX call, return silently
+            if request.headers.get("Content-Type") == "application/x-www-form-urlencoded":
+                return "", 204
+            flash("Budget updated.", "success")
+            return redirect(url_for("settings"))
+
         name = request.form.get("name", "").strip()
         monthly_income = request.form.get("monthly_income", "0")
         alert_threshold = request.form.get("alert_threshold", "80")
@@ -654,6 +704,9 @@ def settings():
             pass
 
         db.session.commit()
+        # If called from onboarding via fetch, return silently
+        if request.referrer and "onboarding" in request.referrer:
+            return "", 204
         flash("Settings updated successfully.", "success")
         return redirect(url_for("settings"))
 
@@ -1016,6 +1069,130 @@ def export_pdf():
         mimetype="application/pdf",
         as_attachment=True,
         download_name=filename,
+    )
+
+
+# ─── Goals Page ───────────────────────────────────────────────────────────────
+
+@app.route("/goals")
+@login_required
+def goals_page():
+    goals = Goal.query.filter_by(user_id=current_user.id).all()
+    goal_list = []
+    for g in goals:
+        pct = round((g.current_amount / g.target_amount) * 100, 1) if g.target_amount > 0 else 0
+        remaining = max(g.target_amount - g.current_amount, 0)
+
+        # Projected completion
+        projected_date = None
+        if g.target_date and g.current_amount > 0:
+            days_since = (datetime.now().date() - (g.target_date - timedelta(days=365))).days  # rough
+            if days_since > 0:
+                daily_rate = g.current_amount / max(days_since, 1)
+                if daily_rate > 0:
+                    days_to_go = int(remaining / daily_rate)
+                    projected_date = (datetime.now().date() + timedelta(days=days_to_go)).strftime("%b %d, %Y")
+
+        goal_list.append({
+            "id": g.id,
+            "name": g.name,
+            "target_amount": g.target_amount,
+            "current_amount": g.current_amount,
+            "remaining": remaining,
+            "percentage": pct,
+            "target_date": g.target_date.strftime("%Y-%m-%d") if g.target_date else "No deadline",
+            "projected_date": projected_date,
+        })
+
+    return render_template("goals.html", goals=goal_list)
+
+
+@app.route("/goals/add", methods=["POST"])
+@login_required
+def add_goal():
+    name = request.form.get("name", "").strip()
+    target = request.form.get("target_amount", "0")
+    current = request.form.get("current_amount", "0")
+    target_date_str = request.form.get("target_date", "")
+
+    if not name:
+        flash("Goal name is required.", "danger")
+        return redirect(url_for("goals_page"))
+
+    try:
+        target_amount = round(float(target), 2)
+        current_amount = round(float(current), 2)
+        if target_amount <= 0:
+            raise ValueError
+    except ValueError:
+        flash("Target amount must be a positive number.", "danger")
+        return redirect(url_for("goals_page"))
+
+    target_date = None
+    if target_date_str:
+        try:
+            target_date = datetime.strptime(target_date_str, "%Y-%m-%d").date()
+        except ValueError:
+            pass
+
+    goal = Goal(
+        user_id=current_user.id,
+        name=name,
+        target_amount=target_amount,
+        current_amount=current_amount,
+        target_date=target_date,
+    )
+    db.session.add(goal)
+    db.session.commit()
+    flash(f"Goal '{name}' created!", "success")
+    return redirect(url_for("goals_page"))
+
+
+@app.route("/goals/<int:goal_id>/fund", methods=["POST"])
+@login_required
+def fund_goal(goal_id):
+    goal = Goal.query.get_or_404(goal_id)
+    if goal.user_id != current_user.id:
+        flash("Unauthorized.", "danger")
+        return redirect(url_for("goals_page"))
+
+    try:
+        amount = round(float(request.form.get("amount", "0")), 2)
+        if amount <= 0:
+            raise ValueError
+    except ValueError:
+        flash("Amount must be a positive number.", "danger")
+        return redirect(url_for("goals_page"))
+
+    goal.current_amount = min(goal.current_amount + amount, goal.target_amount)
+    db.session.commit()
+    flash(f"Added ${amount:,.2f} to '{goal.name}'!", "success")
+    return redirect(url_for("goals_page"))
+
+
+@app.route("/goals/<int:goal_id>/delete", methods=["POST"])
+@login_required
+def delete_goal(goal_id):
+    goal = Goal.query.get_or_404(goal_id)
+    if goal.user_id != current_user.id:
+        flash("Unauthorized.", "danger")
+        return redirect(url_for("goals_page"))
+
+    db.session.delete(goal)
+    db.session.commit()
+    flash(f"Goal '{goal.name}' deleted.", "success")
+    return redirect(url_for("goals_page"))
+
+
+# ─── Onboarding ──────────────────────────────────────────────────────────────
+
+@app.route("/onboarding")
+@login_required
+def onboarding():
+    return render_template(
+        "onboarding.html",
+        income_sources=INCOME_SOURCES,
+        currency_choices=currency_choices(),
     )
 
 
