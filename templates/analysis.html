@@ -165,7 +165,7 @@
 
 {% block scripts %}
 <script>
-    let pollInterval = null;
+    let eventSource = null;
     let elapsedInterval = null;
     let startTime = null;
     let stepIndex = 0;
@@ -196,30 +196,28 @@
         })
         .then(res => res.json())
         .then(data => {
-            pollInterval = setInterval(() => pollStatus(data.task_id), 5000);
+            // Connect to the Server-Sent Events (SSE) Stream endpoint
+            eventSource = new EventSource('/api/analysis-stream/' + data.task_id);
+            
+            eventSource.onmessage = function(event) {
+                const task = JSON.parse(event.data);
+                
+                if (task.status === 'complete') {
+                    eventSource.close();
+                    clearInterval(elapsedInterval);
+                    showResult(task.result);
+                } else if (task.status === 'error' || task.status === 'not_found') {
+                    eventSource.close();
+                    clearInterval(elapsedInterval);
+                    showError(task.error || "Analysis failed or task not found.");
+                }
+                // If status is 'running', do nothing (just keep waiting)
+            };
         })
         .catch(err => {
+            clearInterval(elapsedInterval);
             showError('Failed to start analysis: ' + err.message);
         });
-    }
-
-    function pollStatus(taskId) {
-        fetch('/api/analysis-status/' + taskId)
-            .then(res => res.json())
-            .then(data => {
-                if (data.status === 'complete') {
-                    clearInterval(pollInterval);
-                    clearInterval(elapsedInterval);
-                    showResult(data.result);
-                } else if (data.status === 'error') {
-                    clearInterval(pollInterval);
-                    clearInterval(elapsedInterval);
-                    showError(data.error);
-                }
-            })
-            .catch(err => {
-                // Silently retry on network issues
-            });
     }
 
     function updateElapsed() {

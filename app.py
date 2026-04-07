@@ -6,6 +6,7 @@ Provides a beautiful dashboard UI around the multi-agent system.
 import io
 import json
 import os
+import time
 import uuid
 import threading
 from collections import defaultdict
@@ -630,6 +631,29 @@ def analysis_status(task_id):
     if not task:
         return jsonify({"status": "not_found"}), 404
     return jsonify(task)
+
+
+@app.route("/api/analysis-stream/<task_id>")
+@login_required
+def analysis_stream(task_id):
+    """Server-Sent Events (SSE) endpoint to stream real-time status updates."""
+    def generate():
+        while True:
+            task = analysis_tasks.get(task_id)
+            if not task:
+                yield f"data: {json.dumps({'status': 'not_found'})}\n\n"
+                break
+            
+            yield f"data: {json.dumps(task)}\n\n"
+            
+            if task.get("status") in ["complete", "error"]:
+                break
+            time.sleep(1)  # Send an update every 1 second
+            
+    return Response(generate(), mimetype="text/event-stream", headers={
+        "Cache-Control": "no-cache",
+        "X-Accel-Buffering": "no"  # Prevents Nginx/Gunicorn from buffering the stream
+    })
 
 
 @app.route("/delete-expense/<int:expense_id>", methods=["POST"])
