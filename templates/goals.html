@@ -41,15 +41,15 @@
             </div>
 
             <div class="d-flex justify-content-between mb-3">
-                <small class="text-muted">${{ "{:,.2f}".format(goal.current_amount) }} saved</small>
-                <small class="text-muted">${{ "{:,.2f}".format(goal.target_amount) }} target</small>
+                <small class="text-muted">{{ dc_sym }}{{ "{:,.2f}".format(goal.current_amount) }} saved</small>
+                <small class="text-muted">{{ dc_sym }}{{ "{:,.2f}".format(goal.target_amount) }} target</small>
             </div>
 
             {% if goal.remaining > 0 %}
             <div class="rounded-3 p-2 mb-3" style="background: var(--bg-muted); font-size:.8rem;">
                 <div class="d-flex justify-content-between">
                     <span class="text-muted">Remaining</span>
-                    <span class="fw-bold">${{ "{:,.2f}".format(goal.remaining) }}</span>
+                    <span class="fw-bold">{{ dc_sym }}{{ "{:,.2f}".format(goal.remaining) }}</span>
                 </div>
                 {% if goal.projected_date %}
                 <div class="d-flex justify-content-between mt-1">
@@ -68,7 +68,7 @@
             <div class="d-flex gap-2">
                 {% if goal.remaining > 0 %}
                 <form method="POST" action="{{ url_for('fund_goal', goal_id=goal.id) }}" class="d-flex gap-1 flex-grow-1">
-                    <input type="number" name="amount" class="form-control form-control-sm" placeholder="$ Add funds" step="0.01" min="0.01" required style="font-size:.8rem;">
+                    <input type="number" name="amount" class="form-control form-control-sm" placeholder="{{ dc_sym }} Add funds" step="0.01" min="0.01" required style="font-size:.8rem;">
                     <button type="submit" class="btn btn-primary btn-sm" style="white-space:nowrap; font-size:.8rem;">
                         <i class="fas fa-plus"></i>
                     </button>

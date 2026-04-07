@@ -411,6 +411,83 @@ def dashboard():
         "month_label": today.strftime("%B"),
     }
 
+    # ─── Convert all monetary values to user's display currency ──────
+    dc = current_user.currency or "USD"
+    dc_sym = get_symbol(dc)
+    dc_code = dc
+
+    def cx(usd_amount):
+        """Convert a USD amount to the user's display currency."""
+        if dc == "USD" or usd_amount is None:
+            return usd_amount
+        return convert(usd_amount, "USD", dc)
+
+    def cx_list(lst):
+        return [cx(v) if v is not None else None for v in lst]
+
+    # Summary totals
+    d_total_spent = cx(total_spent)
+    d_total_budget = cx(total_budget)
+    d_income = cx(income)
+    d_expected_income = cx(expected_income)
+
+    # Budget statuses
+    for bs in budget_statuses:
+        bs["total_spent"] = cx(bs["total_spent"])
+        bs["budget_limit"] = cx(bs["budget_limit"])
+        bs["remaining"] = cx(bs["remaining"])
+
+    # Chart data
+    chart_data["values"] = cx_list(chart_data["values"])
+    chart_data["budgets"] = cx_list(chart_data["budgets"])
+
+    # Trend data
+    trend_data["values"] = cx_list(trend_data["values"])
+    trend_data["view_total"] = cx(trend_data["view_total"])
+    trend_data["view_avg_daily"] = cx(trend_data["view_avg_daily"])
+    for ds in trend_data["category_datasets"]:
+        ds["data"] = cx_list(ds["data"])
+
+    # Committed data
+    committed_data["committed_total"] = cx(committed_data["committed_total"])
+    committed_data["discretionary_total"] = cx(committed_data["discretionary_total"])
+    for r in committed_data["recurring"]:
+        r["monthly_cost"] = cx(r["monthly_cost"])
+
+    # Forecast data
+    for fi in forecast_data["forecast_items"]:
+        fi["current_total"] = cx(fi.get("current_total", 0))
+        fi["projected_month_end_total"] = cx(fi["projected_month_end_total"])
+        fi["budget_limit"] = cx(fi["budget_limit"])
+        fi["daily_burn_rate"] = cx(fi["daily_burn_rate"])
+        if fi.get("rolling_avg_3m") is not None:
+            fi["rolling_avg_3m"] = cx(fi["rolling_avg_3m"])
+    forecast_data["overall_values"] = cx_list(forecast_data["overall_values"])
+    forecast_data["overall_rolling_avg"] = cx_list(forecast_data["overall_rolling_avg"])
+    for ds in forecast_data["category_datasets"]:
+        ds["values"] = cx_list(ds["values"])
+        ds["rolling_avg"] = cx_list(ds["rolling_avg"])
+
+    # Income breakdown
+    for src in income_breakdown["sources"]:
+        src["amount"] = cx(src["amount"])
+    income_breakdown["total"] = cx(income_breakdown["total"])
+
+    # Goals
+    for goal in goals:
+        goal["target_amount"] = cx(goal["target_amount"])
+        goal["current_amount"] = cx(goal["current_amount"])
+
+    # Recent transactions — show in display currency, with original currency note
+    for exp in recent:
+        exp["amount_display"] = cx(exp["amount_usd"])
+    for inc in recent_incomes:
+        inc["amount_display"] = cx(inc["amount_usd"])
+
+    # Glance
+    glance["projected_spending"] = cx(glance["projected_spending"])
+    glance["projected_surplus"] = cx(glance["projected_surplus"])
+
     return render_template(
         "dashboard.html",
         budget_statuses=budget_statuses,
@@ -418,10 +495,10 @@ def dashboard():
         goals=goals,
         recent=recent,
         chart_data=chart_data,
-        total_spent=total_spent,
-        total_budget=total_budget,
-        income=income,
-        expected_income=expected_income,
+        total_spent=d_total_spent,
+        total_budget=d_total_budget,
+        income=d_income,
+        expected_income=d_expected_income,
         profile=profile,
         category_colors=CATEGORY_COLORS,
         view_mode=view_mode,
@@ -433,6 +510,8 @@ def dashboard():
         income_sources=INCOME_SOURCES,
         glance=glance,
         needs_onboarding=needs_onboarding,
+        dc_sym=dc_sym,
+        dc_code=dc_code,
     )
 
 
@@ -709,9 +788,12 @@ def settings():
         monthly_income = request.form.get("monthly_income", "0")
         alert_threshold = request.form.get("alert_threshold", "80")
         savings_rate = request.form.get("savings_rate", "20")
+        display_currency = request.form.get("display_currency", "").strip().upper()
 
         if name:
             current_user.name = name
+        if display_currency and display_currency in CURRENCIES:
+            current_user.currency = display_currency
         try:
             current_user.monthly_income = round(float(monthly_income), 2)
         except ValueError:
@@ -732,7 +814,7 @@ def settings():
         flash("Settings updated successfully.", "success")
         return redirect(url_for("settings"))
 
-    return render_template("settings.html")
+    return render_template("settings.html", currency_choices=currency_choices())
 
 
 @app.route("/api/budget-status")
@@ -759,19 +841,22 @@ def export_csv():
         .all()
     )
 
+    dc = current_user.currency or "USD"
+    dc_sym = get_symbol(dc)
+
     rows = [
         {
             "Date": e.date.strftime("%Y-%m-%d"),
             "Category": e.category.title(),
-            "Amount (USD)": e.amount,
+            f"Amount ({dc})": convert(e.amount, "USD", dc) if dc != "USD" else e.amount,
             "Original Amount": e.original_amount if e.original_amount is not None else e.amount,
-            "Currency": e.original_currency or "USD",
+            "Original Currency": e.original_currency or "USD",
             "Description": e.description or "",
         }
         for e in expenses
     ]
 
-    columns = ["Date", "Category", "Amount (USD)", "Original Amount", "Currency", "Description"]
+    columns = ["Date", "Category", f"Amount ({dc})", "Original Amount", "Original Currency", "Description"]
     df = pd.DataFrame(rows, columns=columns) if rows else pd.DataFrame(columns=columns)
 
     buf = io.StringIO()
@@ -802,6 +887,15 @@ def export_pdf():
     profile = _load_user_profile()
     all_expenses_dicts = _load_expenses()
     income = profile.get("monthly_income", 0)
+
+    # User's display currency
+    dc = current_user.currency or "USD"
+    dc_sym = get_symbol(dc)
+    def pcx(usd_val):
+        """Convert USD to display currency for PDF."""
+        if dc == "USD" or usd_val is None:
+            return usd_val
+        return convert(usd_val, "USD", dc)
 
     # Gather income entries for the report
     pdf_incomes = Income.query.filter_by(user_id=current_user.id).order_by(Income.date.desc()).limit(20).all()
@@ -875,13 +969,13 @@ def export_pdf():
     # ── Summary ─────────────────────────────
     elements.append(Paragraph("Summary", section_style))
     summary_data = [
-        ["Monthly Inflow", f"${income:,.2f}"],
-        ["Total Spent (Current Month)", f"${total_spent:,.2f}"],
-        ["Total Budget", f"${total_budget:,.2f}"],
-        ["Remaining", f"${income - total_spent:,.2f}"],
+        ["Monthly Inflow", f"{dc_sym}{pcx(income):,.2f} {dc}"],
+        ["Total Spent (Current Month)", f"{dc_sym}{pcx(total_spent):,.2f}"],
+        ["Total Budget", f"{dc_sym}{pcx(total_budget):,.2f}"],
+        ["Remaining", f"{dc_sym}{pcx(income - total_spent):,.2f}"],
         ["Budget Utilization", f"{total_spent / total_budget * 100:.0f}%" if total_budget > 0 else "N/A"],
-        ["Committed (Recurring)", f"${committed_total:,.2f}"],
-        ["Discretionary", f"${max(total_spent - committed_total, 0):,.2f}"],
+        ["Committed (Recurring)", f"{dc_sym}{pcx(committed_total):,.2f}"],
+        ["Discretionary", f"{dc_sym}{pcx(max(total_spent - committed_total, 0)):,.2f}"],
     ]
     t = Table(summary_data, colWidths=[120 * mm, 50 * mm])
     t.setStyle(TableStyle([
@@ -901,11 +995,11 @@ def export_pdf():
     # ── Income Entries ──────────────────────
     if pdf_incomes:
         elements.append(Paragraph("Money Inflows", section_style))
-        inc_data = [["Date", "Source", "Description", "USD", "Original"]]
+        inc_data = [["Date", "Source", "Description", dc, "Original"]]
         for i in pdf_incomes:
             src_label = INCOME_SOURCES.get(i.source, INCOME_SOURCES["other"])["label"]
             orig_cur = i.original_currency or "USD"
-            if orig_cur != "USD" and i.original_amount is not None:
+            if orig_cur != dc and i.original_amount is not None:
                 orig_str = f"{get_symbol(orig_cur)}{i.original_amount:,.2f} {orig_cur}"
             else:
                 orig_str = ""
@@ -913,7 +1007,7 @@ def export_pdf():
                 i.date.strftime("%Y-%m-%d"),
                 src_label,
                 (i.description or "")[:36],
-                f"${i.amount:,.2f}",
+                f"{dc_sym}{pcx(i.amount):,.2f}",
                 orig_str,
             ])
         t = Table(inc_data, colWidths=[24 * mm, 34 * mm, 46 * mm, 26 * mm, 34 * mm])
@@ -935,8 +1029,8 @@ def export_pdf():
     for bs in budget_statuses:
         budget_table_data.append([
             bs["category"].title(),
-            f"${bs['total_spent']:,.2f}",
-            f"${bs['budget_limit']:,.2f}",
+            f"{dc_sym}{pcx(bs['total_spent']):,.2f}",
+            f"{dc_sym}{pcx(bs['budget_limit']):,.2f}",
             f"{bs['percentage_used']:.0f}%",
             bs["status"].replace("_", " "),
         ])
@@ -966,12 +1060,12 @@ def export_pdf():
     elements.append(Paragraph("Month-End Forecast", section_style))
     fc_data = [["Category", "Current", "Projected", "Burn/Day", "3mo Avg", "Trend"]]
     for fi in forecast_items:
-        ravg = f"${fi['rolling_avg_3m']:,.0f}" if fi.get("rolling_avg_3m") is not None else "—"
+        ravg = f"{dc_sym}{pcx(fi['rolling_avg_3m']):,.0f}" if fi.get("rolling_avg_3m") is not None else "—"
         fc_data.append([
             fi["category"].title(),
-            f"${fi['current_total']:,.2f}",
-            f"${fi['projected_month_end_total']:,.2f}",
-            f"${fi['daily_burn_rate']:,.2f}",
+            f"{dc_sym}{pcx(fi['current_total']):,.2f}",
+            f"{dc_sym}{pcx(fi['projected_month_end_total']):,.2f}",
+            f"{dc_sym}{pcx(fi['daily_burn_rate']):,.2f}",
             ravg,
             fi["trend"].replace("_", " ").title(),
         ])
@@ -997,10 +1091,10 @@ def export_pdf():
             rec_data.append([
                 r["description"],
                 r["category"].title(),
-                f"${r['monthly_cost']:,.2f}",
+                f"{dc_sym}{pcx(r['monthly_cost']):,.2f}",
                 r["confidence"].upper(),
             ])
-        rec_data.append(["", "", f"${committed_total:,.2f}", "TOTAL"])
+        rec_data.append(["", "", f"{dc_sym}{pcx(committed_total):,.2f}", "TOTAL"])
         t = Table(rec_data, colWidths=[60 * mm, 30 * mm, 35 * mm, 30 * mm])
         t.setStyle(TableStyle([
             ("FONTSIZE", (0, 0), (-1, -1), 9),
@@ -1028,7 +1122,7 @@ def export_pdf():
             ))
             if opp.get("potential_savings"):
                 elements.append(Paragraph(
-                    f"&nbsp;&nbsp;&nbsp;&nbsp;Potential savings: <b>${opp['potential_savings']:,.2f}/mo</b>",
+                    f"&nbsp;&nbsp;&nbsp;&nbsp;Potential savings: <b>{dc_sym}{pcx(opp['potential_savings']):,.2f}/mo</b>",
                     body_style,
                 ))
             elements.append(Spacer(1, 3))
@@ -1043,10 +1137,10 @@ def export_pdf():
         .limit(25)
         .all()
     )
-    tx_data = [["Date", "Category", "Description", "USD", "Original"]]
+    tx_data = [["Date", "Category", "Description", dc, "Original"]]
     for e in recent_expenses:
         orig_cur = e.original_currency or "USD"
-        if orig_cur != "USD" and e.original_amount is not None:
+        if orig_cur != dc and e.original_amount is not None:
             orig_str = f"{get_symbol(orig_cur)}{e.original_amount:,.2f} {orig_cur}"
         else:
             orig_str = ""
@@ -1054,7 +1148,7 @@ def export_pdf():
             e.date.strftime("%Y-%m-%d"),
             e.category.title(),
             (e.description or "")[:36],
-            f"${e.amount:,.2f}",
+            f"{dc_sym}{pcx(e.amount):,.2f}",
             orig_str,
         ])
     t = Table(tx_data, colWidths=[24 * mm, 24 * mm, 55 * mm, 26 * mm, 35 * mm])
@@ -1126,7 +1220,16 @@ def goals_page():
             "projected_date": projected_date,
         })
 
-    return render_template("goals.html", goals=goal_list)
+    # Convert to user's display currency
+    dc = current_user.currency or "USD"
+    dc_sym = get_symbol(dc)
+    for gl in goal_list:
+        if dc != "USD":
+            gl["target_amount"] = convert(gl["target_amount"], "USD", dc)
+            gl["current_amount"] = convert(gl["current_amount"], "USD", dc)
+            gl["remaining"] = convert(gl["remaining"], "USD", dc)
+
+    return render_template("goals.html", goals=goal_list, dc_sym=dc_sym, dc_code=dc)
 
 
 @app.route("/goals/add", methods=["POST"])
@@ -1188,7 +1291,8 @@ def fund_goal(goal_id):
 
     goal.current_amount = min(goal.current_amount + amount, goal.target_amount)
     db.session.commit()
-    flash(f"Added ${amount:,.2f} to '{goal.name}'!", "success")
+    sym = get_symbol(current_user.currency or "USD")
+    flash(f"Added {sym}{amount:,.2f} to '{goal.name}'!", "success")
     return redirect(url_for("goals_page"))
 
 

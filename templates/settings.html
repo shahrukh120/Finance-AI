@@ -22,8 +22,24 @@
             </div>
 
             <div class="mb-3">
+                <label for="display_currency" class="form-label fw-semibold">
+                    Display Currency
+                </label>
+                <select class="form-select" id="display_currency" name="display_currency">
+                    {% for c in currency_choices %}
+                    <option value="{{ c.code }}" {% if c.code == current_user.currency %}selected{% endif %}>
+                        {{ c.symbol }} {{ c.code }} — {{ c.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <small class="text-muted">
+                    All amounts on the dashboard, reports, and exports will be shown in this currency.
+                </small>
+            </div>
+
+            <div class="mb-3">
                 <label for="monthly_income" class="form-label fw-semibold">
-                    Expected Monthly Income (USD)
+                    Expected Monthly Income
                 </label>
                 <div class="input-group">
                     <span class="input-group-text" style="border: 2px solid #e2e8f0; border-right: none;">$</span>
@@ -32,8 +48,7 @@
                            style="border-left: none;">
                 </div>
                 <small class="text-muted">
-                    This is used as a fallback when you haven't logged any income for the month.
-                    Once you add actual inflows, the dashboard uses those instead.
+                    Stored in USD internally. This is used as a fallback when you haven't logged any income for the month.
                 </small>
             </div>
 

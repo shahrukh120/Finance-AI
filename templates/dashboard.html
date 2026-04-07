@@ -75,22 +75,22 @@
             <div class="row g-0">
                 <div class="col glance-stat" style="border-right: 1px solid var(--border);">
                     <div class="glance-label">Inflow</div>
-                    <div class="glance-value" style="color: var(--success);">${{ "{:,.0f}".format(income) }}</div>
+                    <div class="glance-value" style="color: var(--success);">{{ dc_sym }}{{ "{:,.0f}".format(income) }}</div>
                 </div>
                 <div class="col glance-stat" style="border-right: 1px solid var(--border);">
                     <div class="glance-label">Spent</div>
-                    <div class="glance-value" style="color: var(--warning);">${{ "{:,.0f}".format(total_spent) }}</div>
+                    <div class="glance-value" style="color: var(--warning);">{{ dc_sym }}{{ "{:,.0f}".format(total_spent) }}</div>
                 </div>
                 <div class="col glance-stat" style="border-right: 1px solid var(--border);">
                     <div class="glance-label">Projected</div>
                     <div class="glance-value" style="color: {% if glance.projected_surplus >= 0 %}var(--success){% else %}var(--danger){% endif %};">
-                        ${{ "{:,.0f}".format(glance.projected_spending) }}
+                        {{ dc_sym }}{{ "{:,.0f}".format(glance.projected_spending) }}
                     </div>
                 </div>
                 <div class="col glance-stat">
                     <div class="glance-label">Surplus / Deficit</div>
                     <div class="glance-value" style="color: {% if glance.projected_surplus >= 0 %}var(--success){% else %}var(--danger){% endif %};">
-                        {% if glance.projected_surplus >= 0 %}+{% endif %}${{ "{:,.0f}".format(glance.projected_surplus) }}
+                        {% if glance.projected_surplus >= 0 %}+{% endif %}{{ dc_sym }}{{ "{:,.0f}".format(glance.projected_surplus) }}
                     </div>
                 </div>
             </div>
@@ -108,13 +108,13 @@
                 <span class="badge bg-success rounded-pill" style="font-size:.6rem;">{{ income_breakdown.count }} entries</span>
                 {% endif %}
             </div>
-            <div class="display-value">${{ "{:,.2f}".format(income) }}</div>
+            <div class="display-value">{{ dc_sym }}{{ "{:,.2f}".format(income) }}</div>
             {% if income_breakdown.sources %}
             <div class="mt-1">
                 {% for src in income_breakdown.sources[:3] %}
                 <small class="d-block" style="font-size:.68rem; color: var(--text-muted);">
                     <i class="fas {{ src.icon }} me-1" style="color: {{ src.color }};"></i>
-                    {{ src.label }}: ${{ "{:,.0f}".format(src.amount) }}
+                    {{ src.label }}: {{ dc_sym }}{{ "{:,.0f}".format(src.amount) }}
                 </small>
                 {% endfor %}
             </div>
@@ -132,13 +132,13 @@
     <div class="col-md-3">
         <div class="card summary-card orange p-3">
             <div class="label"><i class="fas fa-arrow-up me-1"></i> Total Spent</div>
-            <div class="display-value">${{ "{:,.2f}".format(total_spent) }}</div>
+            <div class="display-value">{{ dc_sym }}{{ "{:,.2f}".format(total_spent) }}</div>
         </div>
     </div>
     <div class="col-md-3">
         <div class="card summary-card {% if (income - total_spent) < 0 %}red{% else %}green{% endif %} p-3">
             <div class="label"><i class="fas fa-piggy-bank me-1"></i> Remaining</div>
-            <div class="display-value">${{ "{:,.2f}".format(income - total_spent) }}</div>
+            <div class="display-value">{{ dc_sym }}{{ "{:,.2f}".format(income - total_spent) }}</div>
         </div>
     </div>
     <div class="col-md-3">
@@ -175,15 +175,15 @@
                 </span>
             </div>
             <div class="d-flex justify-content-between align-items-end mb-2">
-                <span class="fw-bold" style="font-size:1.1rem;">${{ "{:,.2f}".format(bs.total_spent) }}</span>
-                <small class="text-muted">of ${{ "{:,.0f}".format(bs.budget_limit) }}</small>
+                <span class="fw-bold" style="font-size:1.1rem;">{{ dc_sym }}{{ "{:,.2f}".format(bs.total_spent) }}</span>
+                <small class="text-muted">of {{ dc_sym }}{{ "{:,.0f}".format(bs.budget_limit) }}</small>
             </div>
             <div class="budget-progress">
                 <div class="budget-progress-bar" style="width: {{ [bs.percentage_used, 100] | min }}%; background: {{ bs.color }};"></div>
             </div>
             <div class="d-flex justify-content-between mt-1">
                 <small class="text-muted">{{ "{:.0f}".format(bs.percentage_used) }}% used</small>
-                <small class="text-muted">${{ "{:,.2f}".format(bs.remaining) }} left</small>
+                <small class="text-muted">{{ dc_sym }}{{ "{:,.2f}".format(bs.remaining) }} left</small>
             </div>
         </div>
     </div>
@@ -242,8 +242,8 @@
                         <div class="goal-progress-bar" style="width: {{ goal.percentage }}%;"></div>
                     </div>
                     <div class="d-flex justify-content-between">
-                        <small class="text-muted">${{ "{:,.0f}".format(goal.current_amount) }}</small>
-                        <small class="text-muted">${{ "{:,.0f}".format(goal.target_amount) }}</small>
+                        <small class="text-muted">{{ dc_sym }}{{ "{:,.0f}".format(goal.current_amount) }}</small>
+                        <small class="text-muted">{{ dc_sym }}{{ "{:,.0f}".format(goal.target_amount) }}</small>
                     </div>
                 </div>
                 {% endfor %}
@@ -298,7 +298,7 @@
                 <div style="font-size:.72rem; font-weight:600; text-transform:uppercase; letter-spacing:.4px; color: var(--text-muted);">
                     {{ 'Weekly' if view_mode == 'weekly' else 'Monthly' }} Total
                 </div>
-                <div class="fw-bold fs-4" style="color: var(--brand);">${{ "{:,.2f}".format(trend_data.view_total) }}</div>
+                <div class="fw-bold fs-4" style="color: var(--brand);">{{ dc_sym }}{{ "{:,.2f}".format(trend_data.view_total) }}</div>
             </div>
         </div>
         <div class="col-md-4">
@@ -306,7 +306,7 @@
                 <div style="font-size:.72rem; font-weight:600; text-transform:uppercase; letter-spacing:.4px; color: var(--text-muted);">
                     Daily Average
                 </div>
-                <div class="fw-bold fs-4" style="color: var(--success);">${{ "{:,.2f}".format(trend_data.view_avg_daily) }}</div>
+                <div class="fw-bold fs-4" style="color: var(--success);">{{ dc_sym }}{{ "{:,.2f}".format(trend_data.view_avg_daily) }}</div>
             </div>
         </div>
         <div class="col-md-4">
@@ -349,23 +349,23 @@
                     <div>
                         <div style="font-size:.65rem; text-transform:uppercase; letter-spacing:.4px; color: var(--text-muted);">Projected</div>
                         <div class="fw-bold" style="font-size:1.05rem; color: {% if fi.forecast == 'WILL_EXCEED_BUDGET' %}var(--danger){% elif fi.forecast == 'AT_RISK' %}var(--warning){% else %}var(--success){% endif %};">
-                            ${{ "{:,.2f}".format(fi.projected_month_end_total) }}
+                            {{ dc_sym }}{{ "{:,.2f}".format(fi.projected_month_end_total) }}
                         </div>
                     </div>
                     <div class="text-end">
                         <div style="font-size:.65rem; text-transform:uppercase; letter-spacing:.4px; color: var(--text-muted);">Budget</div>
-                        <div style="font-size:.9rem;">${{ "{:,.0f}".format(fi.budget_limit) }}</div>
+                        <div style="font-size:.9rem;">{{ dc_sym }}{{ "{:,.0f}".format(fi.budget_limit) }}</div>
                     </div>
                 </div>
                 <div class="d-flex justify-content-between" style="font-size:.72rem; color: var(--text-muted);">
-                    <span>${{ "{:,.2f}".format(fi.daily_burn_rate) }}/day</span>
+                    <span>{{ dc_sym }}{{ "{:,.2f}".format(fi.daily_burn_rate) }}/day</span>
                     {% if fi.rolling_avg_3m is not none %}
                     <span>
                         {% if fi.trend == 'INCREASING' %}<i class="fas fa-arrow-up" style="color:var(--danger);"></i>
                         {% elif fi.trend == 'DECREASING' %}<i class="fas fa-arrow-down" style="color:var(--success);"></i>
                         {% elif fi.trend == 'STABLE' %}<i class="fas fa-minus" style="color:var(--text-muted);"></i>
                         {% endif %}
-                        3mo avg: ${{ "{:,.0f}".format(fi.rolling_avg_3m) }}
+                        3mo avg: {{ dc_sym }}{{ "{:,.0f}".format(fi.rolling_avg_3m) }}
                     </span>
                     {% endif %}
                 </div>
@@ -408,7 +408,7 @@
                         <div style="font-size:.7rem; font-weight:600; text-transform:uppercase; letter-spacing:.4px; color: var(--text-muted);">
                             Committed
                         </div>
-                        <div class="fw-bold fs-5" style="color: var(--danger);">${{ "{:,.2f}".format(committed_data.committed_total) }}</div>
+                        <div class="fw-bold fs-5" style="color: var(--danger);">{{ dc_sym }}{{ "{:,.2f}".format(committed_data.committed_total) }}</div>
                         <div style="font-size:.75rem; color: var(--text-muted);">{{ committed_data.committed_pct }}% of income</div>
                     </div>
                 </div>
@@ -417,7 +417,7 @@
                         <div style="font-size:.7rem; font-weight:600; text-transform:uppercase; letter-spacing:.4px; color: var(--text-muted);">
                             Discretionary
                         </div>
-                        <div class="fw-bold fs-5" style="color: var(--success);">${{ "{:,.2f}".format(committed_data.discretionary_total) }}</div>
+                        <div class="fw-bold fs-5" style="color: var(--success);">{{ dc_sym }}{{ "{:,.2f}".format(committed_data.discretionary_total) }}</div>
                         <div style="font-size:.75rem; color: var(--text-muted);">{{ committed_data.discretionary_pct }}% of income</div>
                     </div>
                 </div>
@@ -462,7 +462,7 @@
                                     {{ item.category | title }}
                                 </span>
                             </td>
-                            <td class="text-end amount-cell">${{ "{:,.2f}".format(item.monthly_cost) }}</td>
+                            <td class="text-end amount-cell">{{ dc_sym }}{{ "{:,.2f}".format(item.monthly_cost) }}</td>
                             <td class="text-center">
                                 <span class="badge {% if item.confidence == 'high' %}bg-success{% else %}bg-warning text-dark{% endif %}" style="font-size:.65rem;">
                                     {{ item.confidence | upper }}
@@ -477,7 +477,7 @@
                     <tfoot>
                         <tr style="border-top: 2px solid var(--border);">
                             <td colspan="2" class="fw-bold" style="font-size:.85rem;">Total Committed</td>
-                            <td class="text-end amount-cell fw-bold" style="color: var(--danger);">${{ "{:,.2f}".format(committed_data.committed_total) }}/mo</td>
+                            <td class="text-end amount-cell fw-bold" style="color: var(--danger);">{{ dc_sym }}{{ "{:,.2f}".format(committed_data.committed_total) }}/mo</td>
                             <td colspan="2"></td>
                         </tr>
                     </tfoot>
@@ -541,9 +541,9 @@
                         <td class="text-end" style="font-size:.9rem; font-weight: 600; color: var(--success);">
                             {{ inc.display_symbol }}{{ "{:,.2f}".format(inc.display_amount) }}
                             <span style="font-size:.7rem; color:var(--text-muted);">{{ inc.display_currency }}</span>
-                            {% if inc.is_foreign %}
+                            {% if inc.display_currency != dc_code %}
                             <br><small style="font-size:.65rem; color:var(--text-muted);">
-                                &#8776; ${{ "{:,.2f}".format(inc.amount_usd) }} USD
+                                &#8776; {{ dc_sym }}{{ "{:,.2f}".format(inc.amount_display) }} {{ dc_code }}
                             </small>
                             {% endif %}
                         </td>
@@ -642,9 +642,9 @@
                         <td class="text-end amount-cell">
                             {{ exp.display_symbol }}{{ "{:,.2f}".format(exp.display_amount) }}
                             <span style="font-size:.7rem; color:var(--text-muted);">{{ exp.display_currency }}</span>
-                            {% if exp.is_foreign %}
+                            {% if exp.display_currency != dc_code %}
                             <br><small style="font-size:.68rem; color:var(--text-muted);">
-                                &#8776; ${{ "{:,.2f}".format(exp.amount_usd) }} USD
+                                &#8776; {{ dc_sym }}{{ "{:,.2f}".format(exp.amount_display) }} {{ dc_code }}
                             </small>
                             {% endif %}
                         </td>
@@ -696,7 +696,8 @@
         });
     }
 
-    // ─── Chart theme awareness ──────────────────────────────────────
+    // ─── Currency & Chart theme awareness ─────────────────────────────
+    const CS = '{{ dc_sym }}';  // currency symbol
     const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
     const gridColor = isDark ? '#2d3143' : '#f1f5f9';
     const textColor = isDark ? '#9ca3b4' : undefined;
@@ -759,8 +760,8 @@
                         callbacks: {
                             label: function(context) {
                                 return context.dataset.label
-                                    ? context.dataset.label + ': $' + context.parsed.y.toFixed(2)
-                                    : context.label + ': $' + context.parsed.toFixed(2);
+                                    ? context.dataset.label + ': ' + CS + context.parsed.y.toFixed(2)
+                                    : context.label + ': ' + CS + context.parsed.toFixed(2);
                             }
                         }
                     }
@@ -770,7 +771,7 @@
                         y: {
                             beginAtZero: true,
                             ticks: {
-                                callback: v => '$' + v,
+                                callback: v => CS + v,
                                 font: { family: 'Inter' },
                                 color: textColor,
                             },
@@ -840,7 +841,7 @@
                         label: function(context) {
                             const val = context.parsed;
                             const pct = (val / {{ income if income > 0 else 1 }} * 100).toFixed(1);
-                            return context.label + ': $' + val.toFixed(2) + ' (' + pct + '%)';
+                            return context.label + ': ' + CS + val.toFixed(2) + ' (' + pct + '%)';
                         }
                     }
                 }
@@ -908,7 +909,7 @@
                 tooltip: {
                     callbacks: {
                         label: function(context) {
-                            return context.dataset.label + ': $' + context.parsed.y.toFixed(2);
+                            return context.dataset.label + ': ' + CS + context.parsed.y.toFixed(2);
                         }
                     }
                 }
@@ -920,14 +921,14 @@
                     beginAtZero: true,
                     position: 'left',
                     title: { display: true, text: 'Daily ($)', font: { family: 'Inter', size: 11 }, color: textColor },
-                    ticks: { callback: v => '$' + v, font: { family: 'Inter', size: 10 }, color: textColor },
+                    ticks: { callback: v => CS + v, font: { family: 'Inter', size: 10 }, color: textColor },
                     grid: { color: gridColor }
                 },
                 y1: {
                     beginAtZero: true,
                     position: 'right',
                     title: { display: true, text: 'Cumulative ($)', font: { family: 'Inter', size: 11 }, color: textColor },
-                    ticks: { callback: v => '$' + v, font: { family: 'Inter', size: 10 }, color: textColor },
+                    ticks: { callback: v => CS + v, font: { family: 'Inter', size: 10 }, color: textColor },
                     grid: { drawOnChartArea: false },
                 }
             }
@@ -987,10 +988,10 @@
             maintainAspectRatio: false,
             plugins: {
                 legend: { position: 'top', labels: { usePointStyle: true, padding: 10, font: { family: 'Inter', size: 10 }, boxWidth: 8, color: textColor } },
-                tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': $' + ctx.parsed.y.toFixed(2) } }
+                tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + CS + ctx.parsed.y.toFixed(2) } }
             },
             scales: {
-                y: { beginAtZero: true, ticks: { callback: v => '$' + v, font: { family: 'Inter', size: 10 }, color: textColor }, grid: { color: gridColor } },
+                y: { beginAtZero: true, ticks: { callback: v => CS + v, font: { family: 'Inter', size: 10 }, color: textColor }, grid: { color: gridColor } },
                 x: { grid: { display: false }, ticks: { font: { family: 'Inter', size: 10 }, color: textColor } }
             }
         }
@@ -1039,13 +1040,13 @@
             interaction: { mode: 'index', intersect: false },
             plugins: {
                 legend: { position: 'top', labels: { usePointStyle: true, padding: 10, font: { family: 'Inter', size: 10 }, boxWidth: 8, color: textColor } },
-                tooltip: { callbacks: { label: ctx => { const val = ctx.parsed.y; return val !== null ? ctx.dataset.label + ': $' + val.toFixed(2) : ''; } } }
+                tooltip: { callbacks: { label: ctx => { const val = ctx.parsed.y; return val !== null ? ctx.dataset.label + ': ' + CS + val.toFixed(2) : ''; } } }
             },
             scales: {
                 y: {
                     beginAtZero: true,
                     title: { display: true, text: 'Monthly Spend ($)', font: { family: 'Inter', size: 11 }, color: textColor },
-                    ticks: { callback: v => '$' + v, font: { family: 'Inter', size: 10 }, color: textColor },
+                    ticks: { callback: v => CS + v, font: { family: 'Inter', size: 10 }, color: textColor },
                     grid: { color: gridColor }
                 },
                 x: { grid: { display: false }, ticks: { font: { family: 'Inter', size: 10 }, maxRotation: 45, color: textColor } }
